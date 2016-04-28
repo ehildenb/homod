@@ -7,11 +7,20 @@ fmod FUN{X :: TRIV, Y :: TRIV} is
     op __ : =>{X,Y} X$Elt -> Y$Elt .
 endfm
 
+fmod MAYBE{X :: TRIV} is
+    sort Maybe{X} .
+    op Nothing : -> Maybe{X} .
+    op Just_ : X$Elt -> Maybe{X} .
+endfm
+
 fmod MAP{X :: TRIV, Y :: TRIV} is
     protecting FUN{X, Y} .
     protecting LIST{X} .
     protecting LIST{Y} .
+    protecting MAYBE{X} .
+    protecting MAYBE{Y} .
     op map__ : =>{X,Y} List{X} -> List{Y} .
+    op map__ : =>{X,Y} Maybe{X} -> Maybe{Y} .
 
     var XS  : List{X} .
     var X   : X$Elt .
@@ -19,6 +28,9 @@ fmod MAP{X :: TRIV, Y :: TRIV} is
 
     eq map f (X XS) = (f X) (map f XS) .
     eq map f nil    = nil .
+
+    eq map f (Just X)   = Just (f X) .
+    eq map f Nothing    = Nothing .
 endfm
 
 fmod COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
