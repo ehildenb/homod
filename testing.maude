@@ -8,7 +8,7 @@ fmod FUN{X :: TRIV, Y :: TRIV} is
 
     sort =>{X,Y,Y} .
     op ___ : =>{X,Y,Y} X$Elt Y$Elt -> Y$Elt .
-    
+
     sort =>{X,Y,X} .
     op ___ : =>{X,Y,X} X$Elt Y$Elt -> X$Elt .
 endfm
@@ -58,7 +58,7 @@ fmod FOLD{X :: TRIV, Y :: TRIV} is
     --- fold right : (x -> y -> y) -> y -> [x] -> y
     eq foldr f Y nil    = Y .
     eq foldr f Y (X XS) = f X (foldr f Y XS) .
-    
+
     --- fold left : (x -> y -> x) -> x -> [y] -> x
     eq foldl g X nil    = X .
     eq foldl g X (Y YS) = foldl g (g X Y) YS .
@@ -87,8 +87,8 @@ fmod MYMOD is
     protecting COMP{Nat, Bool, Nat} .
 
     op toNat : -> =>{Bool, Nat} .
-    eq toNat false  = 0 .
-    eq toNat true   = 1 .
+    eq toNat false      = 0 .
+    eq toNat true       = 1 .
 
     vars N M : Nat .
 
@@ -103,6 +103,6 @@ fmod MYMOD is
     eq odd (s(s(N)))    = odd N .
 
     op plus : -> =>{Nat, Nat, Nat} .
-    eq plus 0 M    = M .
-    eq plus s(N) M = s(plus N M) .
+    eq plus 0 M         = M .
+    eq plus s(N) M      = s(plus N M) .
 endfm
