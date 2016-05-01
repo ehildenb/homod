@@ -1,0 +1,50 @@
+load full-maude27c.maude .
+
+fmod HOFMODS is
+    protecting F&S-MODS&THS .
+
+    sorts @HODecl@ @HODeclList@ .
+    subsort @HODecl@ < @HODeclList@ .
+    sorts @HOTypeVar@ @HOTypeExp@ .
+    subsort @HOTypeVar@ < @HOTypeExp@ .
+    sorts @CTORName@ @CTORDecl@ @CTORDeclList@ .
+    subsort @CTORName@ < @CTORDecl@ < @CTORDeclList@ .
+    sorts @DDecl@ .
+    subsort @DDecl@ < @HODecl@ .
+
+    op module_where_--endmodule : @Interface@ @HODeclList@ -> @Module@ .
+    op __ : @HODeclList@ @HODeclList@ -> @HODeclList@ [assoc] .
+
+    op data_=_  : @HOTypeExp@ @CTORDeclList@ -> @DDecl@ [prec 48].
+    op _|_      : @CTORDeclList@ @CTORDeclList@ -> @CTORDeclList@ [assoc prec 44] .
+    op __       : @CTORDecl@ @HOTypeExp@ -> @CTORDecl@ [prec 40] .
+
+    op ()       : -> @HOTypeExp@ .
+    op __       : @HOTypeExp@ @HOTypeExp@ -> @HOTypeExp@ .
+    op _->_     : @HOTypeExp@ @HOTypeExp@ -> @HOTypeExp@ .
+endfm
+
+fmod HOTESTING is
+    protecting HOFMODS .
+
+    op Maybe : -> @HOTypeExp@ .
+    op Just : -> @CTORName@ .
+    op Nothing : -> @CTORName@ .
+
+    ops a b : -> @HOTypeVar@ .
+
+    op TestMod : -> @Interface@ .
+endfm
+
+select FULL-MAUDE .
+
+loop init .
+
+(reduce in HOTESTING :
+    module TestMod where
+
+        data Maybe a = Just a
+                     | Nothing
+
+    --endmodule
+.)
