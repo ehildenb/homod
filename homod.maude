@@ -1,4 +1,4 @@
-load full-maude27c.maude .
+load full-maude27.maude .
 
 fmod HOFMODS is
     protecting F&S-MODS&THS .
@@ -22,29 +22,56 @@ fmod HOFMODS is
     op ()       : -> @HOTypeExp@ .
     op __       : @HOTypeExp@ @HOTypeExp@ -> @HOTypeExp@ .
     op _->_     : @HOTypeExp@ @HOTypeExp@ -> @HOTypeExp@ .
-endfm
-
-fmod HOTESTING is
-    protecting HOFMODS .
 
     op Maybe : -> @HOTypeExp@ .
     op Just : -> @CTORName@ .
     op Nothing : -> @CTORName@ .
-
     ops a b : -> @HOTypeVar@ .
 
-    op TestMod : -> @Interface@ .
 endfm
 
-select FULL-MAUDE .
+fmod VIEWS2 is
+    protecting VIEWS .
+    protecting HOFMODS .
+endfm
 
-loop init .
 
-(reduce in HOTESTING :
-    module TestMod where
+fmod FULL-MAUDE-SIGN2 is
+    including FULL-MAUDE-SIGN .
+    including VIEWS2 .
+endfm
 
-        data Maybe a = Just a
-                     | Nothing
+--- Can use Full Maude parameterized views for great benefit/flexibility
 
-    --endmodule
-.)
+--- (view Set{X :: Triv} from Triv to Set{X} is
+---     sort Elt to Set{X}
+--- endv)
+
+--- This makes it so that if `X :: Triv`, then we also have `Set{X} :: Triv` for
+--- free. We can use this to get type-genericism in a `data Maybe a = ...`
+--- constructor, where we want `a` to be a base-type, but also some complex one
+--- See section 15.3.2 of Maude manual
+
+--- mod HOTESTING is
+---     protecting FULL-MAUDE .
+---     protecting HOFMODS .
+--- 
+---     op Maybe : -> @HOTypeExp@ .
+---     op Just : -> @CTORName@ .
+---     op Nothing : -> @CTORName@ .
+--- 
+---     ops a b : -> @HOTypeVar@ .
+--- 
+---     --- op TestMod : -> @Interface@ .
+--- endm
+
+(
+
+module TestMod where
+
+data Maybe a = Just a
+             | Nothing
+
+--endmodule
+
+)
