@@ -1,4 +1,4 @@
-load full-maude27c.maude .
+load full-maude27.maude .
 
 fmod HOFMODS is
     protecting F&S-MODS&THS .
