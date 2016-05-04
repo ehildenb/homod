@@ -45,7 +45,7 @@ endfm
 
 load fm27.maude .
 
-(view MaybeTriv{X :: TRIV} from TRIV to DATA-MAYBE{X} is
+(view Maybe{X :: TRIV} from TRIV to DATA-MAYBE{X} is
     sort Elt to Maybe{X} .
 endv)
 
@@ -55,9 +55,9 @@ endv)
 
 (fmod INSTANCE-FUNCTOR-MAYBE{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a,b} .
-    protecting FUNCTION{MaybeTriv{a},MaybeTriv{b}} .
-    extending FUNCTION{=>{a,b},=>{MaybeTriv{a},MaybeTriv{b}}} .
-    op fmap : -> =>{=>{a,b},=>{MaybeTriv{a},MaybeTriv{b}}} .
+    protecting FUNCTION{Maybe{a},Maybe{b}} .
+    extending FUNCTION{=>{a,b},=>{Maybe{a},Maybe{b}}} .
+    op fmap : -> =>{=>{a,b},=>{Maybe{a},Maybe{b}}} .
 
     var f : =>{a,b} .
     var a : a$Elt .
