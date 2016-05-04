@@ -1,108 +1,81 @@
-set include BOOL off .
-set include QID off .
-set include NAT off .
 
-fmod FUN{X :: TRIV, Y :: TRIV} is
-    sort =>{X,Y} .
+--- Parameterized view in Full-Maude
+--- (view FunAsTriv{X,Y} from TRIV to SET-FUNCTION{X,Y} is
+---     sort =>{X,Y} to Elt .
+--- endv)
+--- This would get us a lot of the way towards higher-order programming
+
+fmod FUNCTION{X :: TRIV, Y :: TRIV} is
+    sorts =>{X,Y} .
     op __ : =>{X,Y} X$Elt -> Y$Elt .
-
-    sort =>{X,Y,Y} .
-    op ___ : =>{X,Y,Y} X$Elt Y$Elt -> Y$Elt .
-
-    sort =>{X,Y,X} .
-    op ___ : =>{X,Y,X} X$Elt Y$Elt -> X$Elt .
 endfm
 
-fmod MAYBE{X :: TRIV} is
-    sort Maybe{X} .
-    op Nothing : -> Maybe{X} .
-    op Just_ : X$Elt -> Maybe{X} .
+fmod FUNCTION-ID{X :: TRIV} is
+    protecting FUNCTION{X,X} .
+    op id : -> =>{X,X} .
+    var x : X$Elt .
+    eq id x = x .
 endfm
 
-fmod MAP{X :: TRIV, Y :: TRIV} is
-    protecting FUN{X, Y} .
-    protecting LIST{X} .
-    protecting LIST{Y} .
-    protecting MAYBE{X} .
-    protecting MAYBE{Y} .
-
-    op map__ : =>{X,Y} List{X} -> List{Y} .
-    op map__ : =>{X,Y} Maybe{X} -> Maybe{Y} .
-
-    var XS  : List{X} .
-    var X   : X$Elt .
-    var f   : =>{X,Y} .
-
-    eq map f (X XS) = (f X) (map f XS) .
-    eq map f nil    = nil .
-
-    eq map f (Just X)   = Just (f X) .
-    eq map f Nothing    = Nothing .
+fmod FUNCTIONS-BETWEEN{X :: TRIV, Y :: TRIV} is
+    protecting FUNCTION{X,Y} .
+    protecting FUNCTION{Y,X} .
+    protecting FUNCTION-ID{X} .
+    protecting FUNCTION-ID{Y} .
 endfm
 
-fmod FOLD{X :: TRIV, Y :: TRIV} is
-    protecting FUN{X, Y} .
-    protecting LIST{X} .
-    protecting LIST{Y} .
-
-    op foldr___ : =>{X,Y,Y} Y$Elt List{X} -> Y$Elt .
-    op foldl___ : =>{X,Y,X} X$Elt List{Y} -> X$Elt .
-
-    var Y   : Y$Elt .
-    var YS  : List{Y} .
-    var X   : X$Elt .
-    var XS  : List{X} .
-    var f   : =>{X,Y,Y} .
-    var g   : =>{X,Y,X} .
-
-    --- fold right : (x -> y -> y) -> y -> [x] -> y
-    eq foldr f Y nil    = Y .
-    eq foldr f Y (X XS) = f X (foldr f Y XS) .
-
-    --- fold left : (x -> y -> x) -> x -> [y] -> x
-    eq foldl g X nil    = X .
-    eq foldl g X (Y YS) = foldl g (g X Y) YS .
-endfm
-
-fmod COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
-    protecting FUN{X, Y} .
-    protecting FUN{Y, Z} .
-    protecting FUN{X, Z} .
+fmod FUNCTIONS{X :: TRIV, Y :: TRIV, Z :: TRIV} is
+    protecting FUNCTIONS-BETWEEN{X,Y} .
+    protecting FUNCTIONS-BETWEEN{X,Z} .
+    protecting FUNCTIONS-BETWEEN{Y,Z} .
 
     op _._ : =>{Y,Z} =>{X,Y} -> =>{X,Z} .
 
-    var F : =>{X,Y} .
-    var G : =>{Y,Z} .
-    var X : X$Elt .
-
-    eq (G . F) X = G (F X) .
+    var f : =>{X,Y} .
+    var g : =>{Y,Z} .
+    var x : X$Elt .
+    eq (g . f) x = g (f x) .
 endfm
 
-fmod MYMOD is
-    protecting MAP{Nat, Bool} .
-    protecting MAP{Bool, Nat} .
-    protecting MAP{Bool, Bool} .
-    protecting MAP{Nat, Nat} .
-    protecting FOLD{Nat, Nat} .
-    protecting COMP{Nat, Bool, Nat} .
-
-    op toNat : -> =>{Bool, Nat} .
-    eq toNat false      = 0 .
-    eq toNat true       = 1 .
-
-    vars N M : Nat .
-
-    op even : -> =>{Nat, Bool} .
-    eq even 0           = true .
-    eq even 1           = false .
-    eq even (s(s(N)))   = even N .
-
-    op odd : -> =>{Nat, Bool} .
-    eq odd 0            = false .
-    eq odd 1            = true .
-    eq odd (s(s(N)))    = odd N .
-
-    op plus : -> =>{Nat, Nat, Nat} .
-    eq plus 0 M         = M .
-    eq plus s(N) M      = s(plus N M) .
+fmod DATA-MAYBE{a :: TRIV} is
+    sort Maybe{a} .
+    op Nothing : -> Maybe{a} .
+    op Just_ : a$Elt -> Maybe{a} .
 endfm
+
+load fm27.maude .
+
+(view Maybe{X :: TRIV} from TRIV to DATA-MAYBE{X} is
+    sort Elt to Maybe{X} .
+endv)
+
+(view Functions{X :: TRIV, Y :: TRIV} from TRIV to FUNCTIONS-BETWEEN{X,Y} is
+    sort Elt to =>{X,Y} .
+endv)
+
+(fmod INSTANCE-FUNCTOR-MAYBE{a :: TRIV, b :: TRIV} is
+    protecting FUNCTIONS-BETWEEN{a,b} .
+    protecting FUNCTIONS-BETWEEN{Maybe{a},Maybe{b}} .
+    extending FUNCTIONS-BETWEEN{Functions{a,b},Functions{Maybe{a},Maybe{b}}} .
+    op fmap : -> =>{=>{a,b},=>{Maybe{a},Maybe{b}}} .
+endfm)
+
+
+(fmod TESTING is
+    protecting BOOL .
+    protecting NAT .
+    extending INSTANCE-FUNCTOR-MAYBE{Nat, Bool} .
+
+    op even : -> =>{Nat,Bool} .
+    op odd : -> =>{Nat,Bool} .
+
+    var N : Nat .
+
+    eq even 0 = true .
+    eq even s(0) = false .
+    eq even s(s(N)) = even N .
+
+    eq odd 0 = false .
+    eq odd s(0) = true .
+    eq odd s(s(N)) = odd N .
+endfm)
