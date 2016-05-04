@@ -45,25 +45,28 @@ endfm
 
 load fm27.maude .
 
-(view Maybe{X :: TRIV} from TRIV to DATA-MAYBE{X} is
+(view MaybeTriv{X :: TRIV} from TRIV to DATA-MAYBE{X} is
     sort Elt to Maybe{X} .
 endv)
 
-(view Functions{X :: TRIV, Y :: TRIV} from TRIV to FUNCTIONS-BETWEEN{X,Y} is
+(view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
     sort Elt to =>{X,Y} .
 endv)
 
 (fmod INSTANCE-FUNCTOR-MAYBE{a :: TRIV, b :: TRIV} is
-    protecting FUNCTIONS-BETWEEN{a,b} .
-    protecting FUNCTIONS-BETWEEN{Maybe{a},Maybe{b}} .
-    extending FUNCTIONS-BETWEEN{Functions{a,b},Functions{Maybe{a},Maybe{b}}} .
-    op fmap : -> =>{=>{a,b},=>{Maybe{a},Maybe{b}}} .
+    protecting FUNCTION{a,b} .
+    protecting FUNCTION{MaybeTriv{a},MaybeTriv{b}} .
+    extending FUNCTION{=>{a,b},=>{MaybeTriv{a},MaybeTriv{b}}} .
+    op fmap : -> =>{=>{a,b},=>{MaybeTriv{a},MaybeTriv{b}}} .
+
+    var f : =>{a,b} .
+    var a : a$Elt .
+    eq fmap f Nothing = Nothing .
+    eq fmap f (Just a) = Just (f a) .
 endfm)
 
 
 (fmod TESTING is
-    protecting BOOL .
-    protecting NAT .
     extending INSTANCE-FUNCTOR-MAYBE{Nat, Bool} .
 
     op even : -> =>{Nat,Bool} .
@@ -79,3 +82,8 @@ endfm)
     eq odd s(0) = true .
     eq odd s(s(N)) = odd N .
 endfm)
+
+
+(reduce fmap even Nothing .)
+
+(reduce fmap odd (Just 3) .)
