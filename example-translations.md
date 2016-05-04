@@ -33,7 +33,7 @@ data Maybe a = Just a
 ```
 
 ```maude
-fmod MAYBE{a :: TRIV} is
+fmod DATA-MAYBE{a :: TRIV} is
     sort Maybe{a} .
     op Nothing : -> Maybe{a} .
     op Just_ : a$Elt -> Maybe{a} .
@@ -44,18 +44,55 @@ Translating Classes
 -------------------
 
 ```haskell
-class Functor f where
+class Functor (f :: * -> *) where
     fmap :: (a -> b) -> f a -> f b
 ```
 
 ```maude
-fmod FUNCTOR{a :: TRIV, b :: TRIV} is
-    protecting FUNCTION{a,b} .
-    sorts Functor{a} Functor{b} .
-    op fmap__ : =>{a,b} Functor{a} -> Functor{b} .
-    op fmap_  : =>{a,b} -> =>{Functor{a},Functor{b}} .
+fmod CLASS-FUNCTOR{a :: TRIV, b :: TRIV, f :: DATA-CONST} is
+    protecting FUNCTIONS{a,b} .
+    protecting FUNCTIONS{f{a},f{b}} .
+    protecting FUNCTIONS{FUNCTION{a,b},FUNCTION{f{a},f{b}}} .
+    op fmap : -> =>{=>{a,b},=>{f{a},f{b}}} .
 endfm
 ```
 
 Translating Instances
 ---------------------
+
+```haskell
+instance Functor Maybe where
+    fmap f Nothing = Nothing
+    fmap f (Just a) = Just (f a)
+```
+
+
+```maude
+fmod INSTANCE-FUNCTOR-MAYBE{a :: TRIV, b :: TRIV} is
+    protecting CLASS-FUNCTOR{a,b,DATA-MAYBE} .
+    protecting DATA-MAYBE{a} .
+    protecting DATA-MAYBE{b} .
+    var f : =>{a,b} .
+    var a : a$Elt .
+    eq fmap f Nothing = Nothing .
+    eq fmap f (Just a) = Just (f a) .
+endfm
+
+
+fmod MAYBE{a :: TRIV, b :: TRIV} is
+    protecting INSTANCE-FUNCTOR-MAYBE{a, b} .
+    protecting INSTANCE-FUNCTOR-MAYBE{b, a} .
+    ---protecting INSTANCE-APPLICATIVE-MAYBE{a, b} .
+    ---protecting INSTANCE-APPLICATIVE-MAYBE{b, a} .
+endfm
+```
+
+
+
+
+
+
+
+
+
+
