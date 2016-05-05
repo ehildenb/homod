@@ -1,9 +1,5 @@
-
---- Parameterized view in Full-Maude
---- (view FunAsTriv{X,Y} from TRIV to SET-FUNCTION{X,Y} is
----     sort =>{X,Y} to Elt .
---- endv)
---- This would get us a lot of the way towards higher-order programming
+--- Core Maude
+--- ----------
 
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
     sorts =>{X,Y} .
@@ -43,31 +39,71 @@ fmod DATA-MAYBE{a :: TRIV} is
     op Just_ : a$Elt -> Maybe{a} .
 endfm
 
+fmod DATA-CONS{a :: TRIV} is
+    sort Cons{a} .
+    op [] : -> Cons{a} .
+    op _:_ : a$Elt Cons{a} -> Cons{a} .
+endfm
+
+--- Full Maude
+--- ----------
+
 load fm27.maude .
 
-(view Maybe{X :: TRIV} from TRIV to DATA-MAYBE{X} is
-    sort Elt to Maybe{X} .
-endv)
+(
+view Maybe{a :: TRIV} from TRIV to DATA-MAYBE{a} is
+    sort Elt to Maybe{a} .
+endv
+)
 
-(view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
+(
+view Cons{a :: TRIV} from TRIV to DATA-CONS{a} is
+    sort Elt to Cons{a} .
+endv
+)
+
+(
+view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
     sort Elt to =>{X,Y} .
-endv)
+endv
+)
 
-(fmod INSTANCE-FUNCTOR-MAYBE{a :: TRIV, b :: TRIV} is
-    protecting FUNCTION{a,b} .
-    protecting FUNCTION{Maybe{a},Maybe{b}} .
-    extending FUNCTION{=>{a,b},=>{Maybe{a},Maybe{b}}} .
-    op fmap : -> =>{=>{a,b},=>{Maybe{a},Maybe{b}}} .
+(
+fmod INSTANCE-FUNCTOR-MAYBE{a :: TRIV, b :: TRIV} is
+    protecting FUNCTION{a, b} .
+    protecting FUNCTION{Maybe{a}, Maybe{b}} .
+    extending FUNCTION{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
+    op fmap : -> =>{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
 
     var f : =>{a,b} .
     var a : a$Elt .
     eq fmap f Nothing = Nothing .
     eq fmap f (Just a) = Just (f a) .
-endfm)
+endfm
+)
 
+(
+fmod INSTANCE-FUNCTOR-CONS{a :: TRIV, b :: TRIV} is
+    protecting FUNCTION{a, b} .
+    protecting FUNCTION{Cons{a}, Cons{b}} .
+    extending FUNCTION{=>{a,b}, =>{Cons{a},Cons{b}}} .
+    op fmap : -> =>{=>{a,b}, =>{Cons{a},Cons{b}}} .
 
-(fmod TESTING is
+    var f   : =>{a,b} .
+    var a   : a$Elt .
+    var as  : Cons{a} .
+    eq fmap f [] = [] .
+    eq fmap f (a : as) = (f a) : fmap f as .
+endfm
+)
+
+--- Testing
+--- -------
+
+(
+fmod TESTING is
     extending INSTANCE-FUNCTOR-MAYBE{Nat, Bool} .
+    extending INSTANCE-FUNCTOR-CONS{Nat, Bool} .
 
     op even : -> =>{Nat,Bool} .
     op odd : -> =>{Nat,Bool} .
@@ -81,9 +117,13 @@ endfm)
     eq odd 0 = false .
     eq odd s(0) = true .
     eq odd s(s(N)) = odd N .
-endfm)
-
+endfm
+)
 
 (reduce fmap even Nothing .)
 
 (reduce fmap odd (Just 3) .)
+
+(reduce fmap odd (3 : 5 : 8 : 2 : []) .)
+
+(reduce fmap even (4 : 2 : 3 : 9 : 12 : []) . )
