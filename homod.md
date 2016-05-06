@@ -44,7 +44,6 @@ instance Foldable Cons where
     foldl f b (a : as) = foldl f (f b a) as
 ```
 
-\newpage
 
 Maude Code
 ==========
@@ -100,8 +99,6 @@ fmod DATA-CONS{a :: TRIV} is
     op _:_ : a$Elt Cons{a} -> Cons{a} .
 endfm
 ```
-
-\newpage
 
 ### Full Maude
 
@@ -177,7 +174,6 @@ fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
 endfm
 )
 ```
-\newpage
 
 Testing
 -------
