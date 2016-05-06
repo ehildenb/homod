@@ -13,17 +13,10 @@ fmod FUNCTION-ID{X :: TRIV} is
     eq id x = x .
 endfm
 
-fmod FUNCTIONS-BETWEEN{X :: TRIV, Y :: TRIV} is
+fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     protecting FUNCTION{X,Y} .
-    protecting FUNCTION{Y,X} .
-    protecting FUNCTION-ID{X} .
-    protecting FUNCTION-ID{Y} .
-endfm
-
-fmod FUNCTIONS{X :: TRIV, Y :: TRIV, Z :: TRIV} is
-    protecting FUNCTIONS-BETWEEN{X,Y} .
-    protecting FUNCTIONS-BETWEEN{X,Z} .
-    protecting FUNCTIONS-BETWEEN{Y,Z} .
+    protecting FUNCTION{Y,Z} .
+    protecting FUNCTION{X,Z} .
 
     op _._ : =>{Y,Z} =>{X,Y} -> =>{X,Z} .
 
@@ -69,7 +62,7 @@ endv
 )
 
 (
-fmod INSTANCE-FUNCTOR-MAYBE{a :: TRIV, b :: TRIV} is
+fmod INSTANCE-MAPABLE-MAYBE{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
     protecting FUNCTION{Maybe{a}, Maybe{b}} .
     extending FUNCTION{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
@@ -83,10 +76,11 @@ endfm
 )
 
 (
-fmod INSTANCE-FUNCTOR-CONS{a :: TRIV, b :: TRIV} is
+fmod INSTANCE-MAPABLE-CONS{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
     protecting FUNCTION{Cons{a}, Cons{b}} .
     extending FUNCTION{=>{a,b}, =>{Cons{a},Cons{b}}} .
+
     op fmap : -> =>{=>{a,b}, =>{Cons{a},Cons{b}}} .
 
     var f   : =>{a,b} .
@@ -97,26 +91,65 @@ fmod INSTANCE-FUNCTOR-CONS{a :: TRIV, b :: TRIV} is
 endfm
 )
 
+(
+fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
+    protecting FUNCTION{a, b} .
+    protecting FUNCTION{b, =>{a,b}} .
+    protecting FUNCTION{Cons{a}, b} .
+    protecting FUNCTION{b, =>{Cons{a}, b}} .
+    extending FUNCTION{=>{b, =>{a,b}}, =>{b, =>{Cons{a}, b}}} .
+
+    op foldl : -> =>{=>{b,=>{a,b}}, =>{b, =>{Cons{a}, b}}} .
+
+    var f   : =>{b, =>{a,b}} .
+    var b   : b$Elt .
+    var a   : a$Elt .
+    var as  : Cons{a} .
+
+    eq foldl f b [] = b .
+    eq foldl f b (a : as) = foldl f (f b a) as .
+endfm
+)
+
 --- Testing
 --- -------
 
 (
 fmod TESTING is
-    extending INSTANCE-FUNCTOR-MAYBE{Nat, Bool} .
-    extending INSTANCE-FUNCTOR-CONS{Nat, Bool} .
-
-    op even : -> =>{Nat,Bool} .
-    op odd : -> =>{Nat,Bool} .
+    extending INSTANCE-MAPABLE-MAYBE{Nat, Bool} .
+    extending INSTANCE-MAPABLE-CONS{Nat, Nat} .
+    extending INSTANCE-MAPABLE-CONS{Nat, Bool} .
+    extending INSTANCE-FOLDABLE-CONS{Bool, Bool} .
+    protecting FUNCTION-COMP{Nat,Nat,Bool} .
 
     var N : Nat .
 
-    eq even 0 = true .
-    eq even s(0) = false .
+    op even : -> =>{Nat,Bool} .
+    eq even 0       = true .
+    eq even s(0)    = false .
     eq even s(s(N)) = even N .
 
-    eq odd 0 = false .
-    eq odd s(0) = true .
-    eq odd s(s(N)) = odd N .
+    op odd : -> =>{Nat,Bool} .
+    eq odd 0        = false .
+    eq odd s(0)     = true .
+    eq odd s(s(N))  = odd N .
+
+    op double : -> =>{Nat,Nat} .
+    eq double N = 2 * N .
+
+    op aanndd : -> =>{Bool, =>{Bool,Bool}} .
+    eq aanndd true true     = true .
+    eq aanndd true false    = false .
+    eq aanndd false true    = false .
+    eq aanndd false false   = false .
+
+
+    --- some constants to play with
+    op list1 : -> Cons{Nat} .
+    eq list1 = 3 : 5 : 8 : 2 : 19 : 20 : [] .
+
+    op list2 : -> Cons{Nat} .
+    eq list2 = 16 : 100 : 0 : 3 : 9 : 19 : 22 : 101 : [] .
 endfm
 )
 
@@ -124,6 +157,10 @@ endfm
 
 (reduce fmap odd (Just 3) .)
 
-(reduce fmap odd (3 : 5 : 8 : 2 : []) .)
+(reduce fmap odd list1 .)
 
-(reduce fmap even (4 : 2 : 3 : 9 : 12 : []) . )
+(reduce fmap even list2 . )
+
+(reduce fmap (even . double) list1 . )
+
+(reduce foldl aanndd true (fmap (even . double) list1) .)
