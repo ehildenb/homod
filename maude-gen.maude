@@ -1,13 +1,8 @@
---- Core Maude
---- ----------
-
---- pre-exist
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
     sorts =>{X,Y} .
     op __ : =>{X,Y} X$Elt -> Y$Elt .
 endfm
 
---- pre-exist
 fmod FUNCTION-ID{X :: TRIV} is
     protecting FUNCTION{X,X} .
     op id : -> =>{X,X} .
@@ -15,7 +10,6 @@ fmod FUNCTION-ID{X :: TRIV} is
     eq id x = x .
 endfm
 
---- pre-exist
 fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     protecting FUNCTION{X,Y} .
     protecting FUNCTION{Y,Z} .
@@ -28,48 +22,37 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     var x : X$Elt .
     eq (g . f) x = g (f x) .
 endfm
-
---- generated
 fmod DATA-MAYBE{a :: TRIV} is
     sort Maybe{a} .
     op Nothing : -> Maybe{a} .
     op Just_ : a$Elt -> Maybe{a} .
 endfm
 
---- generated
 fmod DATA-CONS{a :: TRIV} is
     sort Cons{a} .
     op [] : -> Cons{a} .
     op _:_ : a$Elt Cons{a} -> Cons{a} .
 endfm
-
---- Full Maude
---- ----------
-
 load fm27.maude .
 
---- generated
 (
 view Maybe{a :: TRIV} from TRIV to DATA-MAYBE{a} is
     sort Elt to Maybe{a} .
 endv
 )
 
---- generated
 (
 view Cons{a :: TRIV} from TRIV to DATA-CONS{a} is
     sort Elt to Cons{a} .
 endv
 )
 
---- generated
 (
 view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
     sort Elt to =>{X,Y} .
 endv
 )
 
---- generated
 (
 fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
@@ -85,7 +68,6 @@ fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
 endfm
 )
 
---- generated
 (
 fmod INSTANCE-MAPPABLE-CONS{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
@@ -102,7 +84,6 @@ fmod INSTANCE-MAPPABLE-CONS{a :: TRIV, b :: TRIV} is
 endfm
 )
 
---- generated
 (
 fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
@@ -122,13 +103,8 @@ fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
     eq foldl f b (a : as) = foldl f (f b a) as .
 endfm
 )
-
---- Testing
---- -------
-
 (
 fmod TESTING is
-    --- generated (as-needed)
     extending INSTANCE-MAPPABLE-MAYBE{Nat, Bool} .
     extending INSTANCE-MAPPABLE-CONS{Nat, Nat} .
     extending INSTANCE-MAPPABLE-CONS{Nat, Bool} .
@@ -174,15 +150,9 @@ endfm
 )
 
 (reduce map even Nothing .)
-
 (reduce map odd (Just 3) .)
-
 (reduce map odd list1 .)
-
 (reduce map even list2 . )
-
 (reduce map (even . double) list1 . )
-
 (reduce foldl aanndd true (map (id . even . id . double . id) list1) .)
-
 (reduce foldl + 0 list1 .)
