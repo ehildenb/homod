@@ -30,61 +30,32 @@ Translating Data-types
 ```haskell
 data Maybe a = Just a
              | Nothing
+
+data Cons a = []
+            | a : Cons a
 ```
 
-```maude
-fmod DATA-MAYBE{a :: TRIV} is
-    sort Maybe{a} .
-    op Nothing : -> Maybe{a} .
-    op Just_ : a$Elt -> Maybe{a} .
-endfm
-```
-
-Translating Classes
+Translating Classes and Instances
 -------------------
 
 ```haskell
-class Functor (f :: * -> *) where
-    fmap :: (a -> b) -> f a -> f b
-```
+class Mapable (f :: * -> *) where
+    map :: (a -> b) -> f a -> f b
 
-```maude
-fmod CLASS-FUNCTOR{a :: TRIV, b :: TRIV, f :: DATA-CONST} is
-    protecting FUNCTIONS{a,b} .
-    protecting FUNCTIONS{f{a},f{b}} .
-    protecting FUNCTIONS{FUNCTION{a,b},FUNCTION{f{a},f{b}}} .
-    op fmap : -> =>{=>{a,b},=>{f{a},f{b}}} .
-endfm
-```
+instance Mappable Maybe where
+    map f Nothing = Nothing
+    map f (Just a) = Just (f a)
 
-Translating Instances
----------------------
+instance Mappable Cons where
+    map f [] = []
+    map f (a : as) = f a : fmap f as
 
-```haskell
-instance Functor Maybe where
-    fmap f Nothing = Nothing
-    fmap f (Just a) = Just (f a)
-```
+class Foldable (f :: * -> *) where
+    foldl :: (b -> a -> b) -> b -> f a -> b
 
-
-```maude
-fmod INSTANCE-FUNCTOR-MAYBE{a :: TRIV, b :: TRIV} is
-    protecting CLASS-FUNCTOR{a,b,DATA-MAYBE} .
-    protecting DATA-MAYBE{a} .
-    protecting DATA-MAYBE{b} .
-    var f : =>{a,b} .
-    var a : a$Elt .
-    eq fmap f Nothing = Nothing .
-    eq fmap f (Just a) = Just (f a) .
-endfm
-
-
-fmod MAYBE{a :: TRIV, b :: TRIV} is
-    protecting INSTANCE-FUNCTOR-MAYBE{a, b} .
-    protecting INSTANCE-FUNCTOR-MAYBE{b, a} .
-    ---protecting INSTANCE-APPLICATIVE-MAYBE{a, b} .
-    ---protecting INSTANCE-APPLICATIVE-MAYBE{b, a} .
-endfm
+instance Foldable Cons where
+    foldl f b [] = b
+    foldl f b (a : as) = foldl f (f b a) as
 ```
 
 
