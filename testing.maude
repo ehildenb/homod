@@ -1,11 +1,13 @@
 --- Core Maude
 --- ----------
 
+--- pre-exist
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
     sorts =>{X,Y} .
     op __ : =>{X,Y} X$Elt -> Y$Elt .
 endfm
 
+--- pre-exist
 fmod FUNCTION-ID{X :: TRIV} is
     protecting FUNCTION{X,X} .
     op id : -> =>{X,X} .
@@ -13,12 +15,13 @@ fmod FUNCTION-ID{X :: TRIV} is
     eq id x = x .
 endfm
 
+--- pre-exist
 fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     protecting FUNCTION{X,Y} .
     protecting FUNCTION{Y,Z} .
     protecting FUNCTION{X,Z} .
 
-    op _._ : =>{Y,Z} =>{X,Y} -> =>{X,Z} .
+    op _._ : =>{Y,Z} =>{X,Y} -> =>{X,Z} [gather (E e)].
 
     var f : =>{X,Y} .
     var g : =>{Y,Z} .
@@ -26,12 +29,14 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     eq (g . f) x = g (f x) .
 endfm
 
+--- generated
 fmod DATA-MAYBE{a :: TRIV} is
     sort Maybe{a} .
     op Nothing : -> Maybe{a} .
     op Just_ : a$Elt -> Maybe{a} .
 endfm
 
+--- generated
 fmod DATA-CONS{a :: TRIV} is
     sort Cons{a} .
     op [] : -> Cons{a} .
@@ -43,29 +48,34 @@ endfm
 
 load fm27.maude .
 
+--- generated
 (
 view Maybe{a :: TRIV} from TRIV to DATA-MAYBE{a} is
     sort Elt to Maybe{a} .
 endv
 )
 
+--- generated
 (
 view Cons{a :: TRIV} from TRIV to DATA-CONS{a} is
     sort Elt to Cons{a} .
 endv
 )
 
+--- generated
 (
 view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
     sort Elt to =>{X,Y} .
 endv
 )
 
+--- generated
 (
 fmod INSTANCE-MAPABLE-MAYBE{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
     protecting FUNCTION{Maybe{a}, Maybe{b}} .
     extending FUNCTION{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
+
     op fmap : -> =>{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
 
     var f : =>{a,b} .
@@ -75,6 +85,7 @@ fmod INSTANCE-MAPABLE-MAYBE{a :: TRIV, b :: TRIV} is
 endfm
 )
 
+--- generated
 (
 fmod INSTANCE-MAPABLE-CONS{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
@@ -91,6 +102,7 @@ fmod INSTANCE-MAPABLE-CONS{a :: TRIV, b :: TRIV} is
 endfm
 )
 
+--- generated
 (
 fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
@@ -116,13 +128,19 @@ endfm
 
 (
 fmod TESTING is
+    --- generated (as-needed)
     extending INSTANCE-MAPABLE-MAYBE{Nat, Bool} .
     extending INSTANCE-MAPABLE-CONS{Nat, Nat} .
     extending INSTANCE-MAPABLE-CONS{Nat, Bool} .
     extending INSTANCE-FOLDABLE-CONS{Bool, Bool} .
+    extending INSTANCE-FOLDABLE-CONS{Nat, Nat} .
+    protecting FUNCTION-ID{Bool} .
+    protecting FUNCTION-ID{Nat} .
+    protecting FUNCTION-COMP{Nat,Bool,Bool} .
     protecting FUNCTION-COMP{Nat,Nat,Bool} .
+    protecting FUNCTION-COMP{Nat,Nat,Nat} .
 
-    var N : Nat .
+    vars N M : Nat .
 
     op even : -> =>{Nat,Bool} .
     eq even 0       = true .
@@ -143,6 +161,8 @@ fmod TESTING is
     eq aanndd false true    = false .
     eq aanndd false false   = false .
 
+    op + : -> =>{Nat, =>{Nat,Nat}} .
+    eq + N M = N + M .
 
     --- some constants to play with
     op list1 : -> Cons{Nat} .
@@ -163,4 +183,6 @@ endfm
 
 (reduce fmap (even . double) list1 . )
 
-(reduce foldl aanndd true (fmap (even . double) list1) .)
+(reduce foldl aanndd true (fmap (id . even . id . double . id) list1) .)
+
+(reduce foldl + 0 list1 .)
