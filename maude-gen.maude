@@ -1,6 +1,6 @@
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
-    sorts =>{X,Y} .
-    op __ : =>{X,Y} X$Elt -> Y$Elt .
+    sort =>{X,Y} .
+    op __   : =>{X,Y} X$Elt -> Y$Elt .
 endfm
 
 fmod FUNCTION-ID{X :: TRIV} is
@@ -30,8 +30,8 @@ endfm
 
 fmod DATA-CONS{a :: TRIV} is
     sort Cons{a} .
-    op [] : -> Cons{a} .
-    op _:_ : a$Elt Cons{a} -> Cons{a} .
+    op Nil : -> Cons{a} .
+    op _:|_ : a$Elt Cons{a} -> Cons{a} .
 endfm
 load fm27.maude .
 
@@ -52,7 +52,6 @@ view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
     sort Elt to =>{X,Y} .
 endv
 )
-
 (
 fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
@@ -79,8 +78,8 @@ fmod INSTANCE-MAPPABLE-CONS{a :: TRIV, b :: TRIV} is
     var f   : =>{a,b} .
     var a   : a$Elt .
     var as  : Cons{a} .
-    eq map f [] = [] .
-    eq map f (a : as) = f a : map f as .
+    eq map f Nil = Nil .
+    eq map f (a :| as) = f a :| map f as .
 endfm
 )
 
@@ -99,8 +98,8 @@ fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
     var a   : a$Elt .
     var as  : Cons{a} .
 
-    eq foldl f b [] = b .
-    eq foldl f b (a : as) = foldl f (f b a) as .
+    eq foldl f b Nil = b .
+    eq foldl f b (a :| as) = foldl f (f b a) as .
 endfm
 )
 (
@@ -142,17 +141,28 @@ fmod TESTING is
 
     --- some constants to play with
     op list1 : -> Cons{Nat} .
-    eq list1 = 3 : 5 : 8 : 2 : 19 : 20 : [] .
+    eq list1 = 3 :| 5 :| 8 :| 2 :| 19 :| 20 :| Nil .
 
     op list2 : -> Cons{Nat} .
-    eq list2 = 16 : 100 : 0 : 3 : 9 : 19 : 22 : 101 : [] .
+    eq list2 = 16 :| 100 :| 0 :| 3 :| 9 :| 19 :| 22 :| 101 :| Nil .
 endfm
 )
-
+--- map over Maybe type
 (reduce map even Nothing .)
 (reduce map odd (Just 3) .)
+
+--- map over Cons type
 (reduce map odd list1 .)
 (reduce map even list2 . )
+
+--- function composition
 (reduce map (even . double) list1 . )
+
+--- foldl over Cons type and function composition
 (reduce foldl aanndd true (map (id . even . id . double . id) list1) .)
+
+--- foldl numeric over Cons type
 (reduce foldl + 0 list1 .)
+
+--- map partially applied function over Cons type
+(reduce map (+ 3) list1 .)

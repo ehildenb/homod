@@ -7,25 +7,36 @@ execute: maude-gen.maude haskell-orig.hs
 ...
 
 
+Introduction
+============
+
+TODO: Say stuff about paper (Tannen), say stuff about "people like Haskell". Say
+stuff about eqnl logic having HO power.
+
 Original Haskell
 ================
 
-These are data-declarations we would like to make:
+### Data Declarations (with ADTs)
 
 ```haskell{exec:haskell-orig.hs}
 module HaskTest where
 
+import Prelude hiding (Foldable, Maybe, map, Just, Nothing, foldl)
+
 data Maybe a = Just a
              | Nothing
+             deriving Show
 
-data Cons a = []
-            | a : Cons a
+infixr 5 :|
+data Cons a = Nil
+            | a :| Cons a
+            deriving Show
 ```
 
-And some type-class instances for them:
+### Type Classes
 
 ```haskell{exec:haskell-orig.hs}
-class Mappable (f :: * -> *) where
+class Mappable f where
     map :: (a -> b) -> f a -> f b
 
 instance Mappable Maybe where
@@ -33,17 +44,22 @@ instance Mappable Maybe where
     map f (Just a) = Just (f a)
 
 instance Mappable Cons where
-    map f [] = []
-    map f (a : as) = f a : fmap f as
+    map f Nil = Nil
+    map f (a :| as) = (f a) :| map f as
 
-class Foldable (f :: * -> *) where
+class Foldable f where
     foldl :: (b -> a -> b) -> b -> f a -> b
 
 instance Foldable Cons where
-    foldl f b [] = b
-    foldl f b (a : as) = foldl f (f b a) as
+    foldl f b Nil = b
+    foldl f b (a :| as) = foldl f (f b a) as
+
+--endmodule
 ```
 
+TODO: Explain what here is higher order, talk about how we would like to be able
+to use this directly in Maude by providing Haskell queries, or to use
+Haskell-like code from within Maude.
 
 Maude Code
 ==========
@@ -53,8 +69,8 @@ Pre-Exists
 
 ```maude{exec:maude-gen.maude}
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
-    sorts =>{X,Y} .
-    op __ : =>{X,Y} X$Elt -> Y$Elt .
+    sort =>{X,Y} .
+    op __   : =>{X,Y} X$Elt -> Y$Elt .
 endfm
 
 fmod FUNCTION-ID{X :: TRIV} is
@@ -78,6 +94,9 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
 endfm
 ```
 
+TODO: Want to rely on Maude for doing sort-checking. The `__` operator does all
+the work once instantiated with the correct sorts via a view.
+
 Generated
 ---------
 
@@ -95,10 +114,14 @@ endfm
 
 fmod DATA-CONS{a :: TRIV} is
     sort Cons{a} .
-    op [] : -> Cons{a} .
-    op _:_ : a$Elt Cons{a} -> Cons{a} .
+    op Nil : -> Cons{a} .
+    op _:|_ : a$Elt Cons{a} -> Cons{a} .
 endfm
 ```
+
+TODO: These are just ADTs, so these are super easy to translate (because the
+models of eqnl logic are algebras). This is $\epsilon$-representation distance,
+so it's actually not that useful to provide these definitions in Haskell.
 
 ### Full Maude
 
@@ -122,7 +145,14 @@ view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
     sort Elt to =>{X,Y} .
 endv
 )
+```
 
+TODO: These are parameterized views - they allow automatic creation of the
+correct function sorts (which removes a lot of boilerplate). Now the user can
+just say which function sorts they want, and the correct view to `TRIV` will be
+generated for them.
+
+```maude{exec:maude-gen.maude}
 (
 fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
     protecting FUNCTION{a, b} .
@@ -149,8 +179,8 @@ fmod INSTANCE-MAPPABLE-CONS{a :: TRIV, b :: TRIV} is
     var f   : =>{a,b} .
     var a   : a$Elt .
     var as  : Cons{a} .
-    eq map f [] = [] .
-    eq map f (a : as) = f a : map f as .
+    eq map f Nil = Nil .
+    eq map f (a :| as) = f a :| map f as .
 endfm
 )
 
@@ -169,11 +199,18 @@ fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
     var a   : a$Elt .
     var as  : Cons{a} .
 
-    eq foldl f b [] = b .
-    eq foldl f b (a : as) = foldl f (f b a) as .
+    eq foldl f b Nil = b .
+    eq foldl f b (a :| as) = foldl f (f b a) as .
 endfm
 )
 ```
+
+TODO: These are the instances from above. Notice that for the "higher-order"
+functionality, we have provided combinators which just place the correct
+constants (which have correct associated function sorts) in the correct places.
+The definitions are exactly the same (nearly copy paste). Partial application is
+immediately supported because of the `=>{ , }` view and the `__` operator. For
+instance if `+ : -> =>{Nat, =>{Nat, Nat}}`, we
 
 Testing
 -------
@@ -218,18 +255,102 @@ fmod TESTING is
 
     --- some constants to play with
     op list1 : -> Cons{Nat} .
-    eq list1 = 3 : 5 : 8 : 2 : 19 : 20 : [] .
+    eq list1 = 3 :| 5 :| 8 :| 2 :| 19 :| 20 :| Nil .
 
     op list2 : -> Cons{Nat} .
-    eq list2 = 16 : 100 : 0 : 3 : 9 : 19 : 22 : 101 : [] .
+    eq list2 = 16 :| 100 :| 0 :| 3 :| 9 :| 19 :| 22 :| 101 :| Nil .
 endfm
 )
+```
 
+TODO: Talk about defn of `aanndd`, `+` and `double`, notably how how `+` and
+`double` are defined in terms of their algebraic counterparts, but `aanndd` is
+defined more functionally (though we are using algebra here, but the point is
+that that code could be copy-pasted from Haskell code).
+
+```maude{exec:maude-gen.maude}
+--- map over Maybe type
 (reduce map even Nothing .)
 (reduce map odd (Just 3) .)
+
+--- map over Cons type
 (reduce map odd list1 .)
 (reduce map even list2 . )
+
+--- function composition
 (reduce map (even . double) list1 . )
+
+--- foldl over Cons type and function composition
 (reduce foldl aanndd true (map (id . even . id . double . id) list1) .)
+
+--- foldl numeric over Cons type
 (reduce foldl + 0 list1 .)
+
+--- map partially applied function over Cons type
+(reduce map (+ 3) list1 .)
 ```
+
+TODO: Talk about different things going on here. Make sure to mention
+partial application happening in the last example. Also make note of the problem
+we face when the sort to infer is ambiguous.
+
+### Output
+
+```maude
+reduce in TESTING :
+  (map).=>{=>{Nat,Bool},=>{Maybe{Nat},Maybe{Bool}}}even(Nothing).Maybe{Nat}
+result Maybe{Bool} :
+  (Nothing).Maybe{Bool}
+
+reduce in TESTING :
+  (map).=>{=>{Nat,Bool},=>{Maybe{Nat},Maybe{Bool}}}odd Just 3
+result Maybe{Bool} :
+  Just true
+
+reduce in TESTING :
+  (map).=>{=>{Nat,Bool},=>{Cons{Nat},Cons{Bool}}}odd list1
+result Cons{Bool} :
+  true :| true :| false :| false :| true :| false :|(Nil).Cons{Bool}
+
+reduce in TESTING :
+  (map).=>{=>{Nat,Bool},=>{Cons{Nat},Cons{Bool}}}even list2
+result Cons{Bool} :
+  true :| true :| true :| false :| false :| false :| true :| false :|(Nil).Cons{Bool}
+
+reduce in TESTING :
+  (map).=>{=>{Nat,Bool},=>{Cons{Nat},Cons{Bool}}}(even . double)list1
+result Cons{Bool} :
+  true :| true :| true :| true :| true :| true :|(Nil).Cons{Bool}
+
+reduce in TESTING :
+  (foldl).=>{=>{Bool,=>{Bool,Bool}},=>{Bool,=>{Cons{Bool},Bool}}}aanndd true(map).=>{=>{Nat,Bool},=>{Cons{Nat},Cons{
+    Bool}}}((id).=>{Bool,Bool}. even .(id).=>{Nat,Nat}. double .(id).=>{Nat,Nat})list1
+result Bool :
+  true
+
+reduce in TESTING :
+  (foldl).=>{=>{Nat,=>{Nat,Nat}},=>{Nat,=>{Cons{Nat},Nat}}}+ 0 list1
+result NzNat :
+  57
+
+reduce in TESTING :
+  (map).=>{=>{Nat,Nat},=>{Cons{Nat},Cons{Nat}}}+ 3 list1
+result Cons{Nat} :
+  6 :| 8 :| 11 :| 5 :| 22 :| 23 :|(Nil).Cons{Nat}
+```
+
+
+Future Work
+===========
+
+TODO: Actually generate the Maude code using a Full Maude parser.
+
+TODO: Lambda abstraction would be cool (we could place passed in terms in the
+correct spot inside the algebra). We can use one of the `LAMBDA2CL` compilers to
+help with this (automate the process). We would have to do type inference so we
+know which modules to import. We could also think about adding other "nice"
+things which most people associate with functional programming (eg. the Haskell
+`Prelude`).
+
+TODO: More general partial application/sort inference.
+
