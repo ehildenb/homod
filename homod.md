@@ -57,9 +57,17 @@ instance Foldable Cons where
 --endmodule
 ```
 
-TODO: Explain what here is higher order, talk about how we would like to be able
-to use this directly in Maude by providing Haskell queries, or to use
-Haskell-like code from within Maude.
+Above is an example of two common Haskell algebraic datatypes, the `Maybe`
+datatype specifying the possible absence of data, as well as the `Cons` datatype
+representing a list. In addition, the typeclasses `Mappable` and `Foldable` are
+defined, along with instances `map` and `foldl` of those typeclasses using the
+`Maybe` and `Cons` datatypes. Note that both `map` and `foldl` above are higher
+order functions, something not explicitly available in Maude. We would like to
+be able to use Haskell-like higher order code within Maude, or even be able to
+use the above code directly in Maude. The following sections discuss how this
+and similar higher order Haskell modules can be converted into equivalent Maude
+modules.
+
 
 Maude Code
 ==========
@@ -94,8 +102,16 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
 endfm
 ```
 
-TODO: Want to rely on Maude for doing sort-checking. The `__` operator does all
-the work once instantiated with the correct sorts via a view.
+The above code is boilerplate that will automatically be generated for any
+Haskell module. The most important of the three modules specified above is the
+`FUNCTION` module, paramatrized on two sorts `X` and \texttt{Y}. With these
+sorts, it creates a new sort that represents a function from `X` to `Y`. In this
+fashion, we are able to simulate higher order functions while still in Maude. We
+will see more examples of this later. Additionally, the `__` operator is used
+for function application, as it requires a function from `X` to `Y` and an
+element in `X` and returns an element in `Y`. By defining the `__` operator in
+this way, we also are able to rely on Maude's sort checker to rule out
+ill-formed programs.
 
 Generated
 ---------
