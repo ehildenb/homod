@@ -33,7 +33,7 @@ sort/type inference).
 Original Haskell
 ================
 
-```haskell
+```haskell{exec:haskell-orig.hs}
 module HaskTest where
 
 import Prelude hiding (Foldable, Maybe, map, Just, Nothing, foldl)
@@ -126,7 +126,9 @@ parametrized on two `TRIV` theories `X` and `Y`. Given the `Elt` sorts of these
 theories, it creates a new sort that represents functions `[X -> Y]`.
 `FUNCTION{X,Y}` also defines the `__` operator for function application. By
 defining the `__` operator in this way, we are able to rely on Maude's sort
-checker to rule out ill-formed simply-typed functional terms.
+checker to rule out ill-formed simply-typed functional terms. We also define the
+`_$_` operator in this module, which is based off Haskell's function of the same
+name, and is used in order to avoid parentheses.
 
 The other modules are specified mostly for the user's convenience. The
 `FUNCTION-ID` module gives the identity function on `X`. The `FUNCTION-COMP`
@@ -328,14 +330,22 @@ endfm
 ```
 
 At the top of the module we include all of the instances we need just to make
-the sort-checking and function application of the `TESTING` module work.
+the sort-checking and function application of the `TESTING` module
+work. Ideally, a user would not have to import these manually, our tool would
+infer which modules need to be protected based on what the user writes. For
+example, if `map even` is used over a list, then we would like to infer that
+`INSTANCE-MAPPABLE-CONS{Nat, Bool}` should be extended.
 
-
-
-TODO: Talk about defn of `aanndd`, `+` and `double`, notably how how `+` and
-`double` are defined in terms of their algebraic counterparts, but `aanndd` is
-defined more functionally (though we are using algebra here, but the point is
-that that code could be copy-pasted from Haskell code).
+Further, one can define functions both algebraically and syntactically. For
+example, `even` is defined purely functionally, explicitly specifying the value
+of `even N` for all `N`. On the other hand, `double` and `+` are defined purely
+algebraically, using Maude's builtin `*` and `+` operators
+respectively. Interestingly, `odd` is defined partially functionally and
+partially algebraically. It uses the `even` definition that was previously
+functionally defined, as well as Maude's builtin `not` operator. These
+definition all are very similar to equivalent Haskell definitions, so it is
+feasible that we would be able to translate Haskell definitions into equivalent
+Maude definitions such as those above.
 
 ```maude{exec:maude-gen.maude}
 --- map over Maybe type
@@ -359,15 +369,15 @@ that that code could be copy-pasted from Haskell code).
 (reduce map (even . double) list1 . )
     --- produces: true :| true :| true :| true :| true :| true :| Nil
 
---- foldl over Cons type and function composition, using `$` precedence operator
---- ----------------------------------------------------------------------------
-(reduce foldl aanndd true $ map (id . even . id . double . id) list1 .)
-    --- produces: true
-
 --- foldl numeric over Cons type
 --- ----------------------------
 (reduce foldl (+) 0 list1 .)
     --- produces: 57
+
+--- foldl over Cons type and function composition, using `$` precedence operator
+--- ----------------------------------------------------------------------------
+(reduce foldl aanndd true $ map (id . even . id . double . id) list1 .)
+    --- produces: true
 
 --- map partially applied function over Cons type
 --- ---------------------------------------------
@@ -380,24 +390,47 @@ that that code could be copy-pasted from Haskell code).
     --- produces: true :| true :| false :| false :| true :| false :| Nil
 ```
 
-TODO: Talk about different things going on here. Make sure to mention
-partial application happening in the last example. Also make note of the problem
-we face when the sort to infer is ambiguous.
+Above are a series of examples using code from the `TESTING` module. The first
+few examples are basic examples using `map` over `Maybe` and `Cons`
+datatypes. The next couple of examples show the use of function composition and
+basic uses of `foldl`. Note in the seventh example, `id` is used multiple times,
+and Maude's sort checker is able to infer when it is the identity function over
+`Nat` and when it is the identity function over `Bool`. We also make use of the
+`$` precedence operator in this example to help avoid extra parentheses. The
+next example is another basic use of `map` over a list, though note the function
+used is `(+ 3)`. Here, with no additional work, Maude gives us such a partial
+application for free. Unfortunately, a partial function like `map even` can be
+from `Maybe{Nat}` to `Maybe{Bool}` or from `Cons{Nat}` to `Cons{Bool}`, so
+currently we are unable to infer a generic sort for such partial functions
+without additional information. The last example is shows function composition
+along with partial application, as well as another use of the `$`
+operator. Here, since a list is used, Maude is able to infer the correct sort
+for the partial function `map even`.
 
 
 Future Work
 ===========
 
-TODO: Actually generate the Maude code using a Full Maude parser.
+For future work, the main thing we would like to do would be to actually
+generate much of the above Maude code using a Full Maude parser. This would
+allow users to write higher order functions in Haskell, and immediately see how
+that can be translated to Maude. One could then use some Maude-specific
+functionality, such as the ITP, to prove interesting properties about his or her
+code.
 
-TODO: Lambda abstraction would be cool (we could place passed in terms in the
-correct spot inside the algebra). We can use one of the `LAMBDA2CL` compilers to
-help with this (automate the process). We would have to do type inference so we
-know which modules to import. We could also think about adding other "nice"
-things which most people associate with functional programming (eg. the Haskell
-`Prelude`).
+Another interesting functionality would be adding support for translating
+Haskell's lambda abstraction. We could use one of the `LAMBDA2CL` compilers to
+help automate this process. We would also have to do type inference to determine
+which modules to import. Additionally, we could also add other "nice" things
+which people associate with functional programming, such as other functionality
+that is currently in the Haskell `Prelude`.
 
-TODO: More general partial application/sort inference.
+Finally, we could add support for more general sort inference when using partial
+application. With this, `map even` could initially be inferred with a more
+general sort such as `=>{f{a}, f{b}}`, then when instantiated with a list could
+be converted to the sort `=>{Cons{a}, Cons{b}}`. Currently, as previously
+mentioned, Maude's parser will not accept `map even` or similar partial
+functions if the sort is ambiguous.
 
 
 References

@@ -171,15 +171,15 @@ endfm
 (reduce map (even . double) list1 . )
     --- produces: true :| true :| true :| true :| true :| true :| Nil
 
---- foldl over Cons type and function composition
---- ---------------------------------------------
-(reduce foldl aanndd true $ map (id . even . id . double . id) list1 .)
-    --- produces: true
-
 --- foldl numeric over Cons type
 --- ----------------------------
 (reduce foldl (+) 0 list1 .)
     --- produces: 57
+
+--- foldl over Cons type and function composition, using `$` precedence operator
+--- ----------------------------------------------------------------------------
+(reduce foldl aanndd true $ map (id . even . id . double . id) list1 .)
+    --- produces: true
 
 --- map partially applied function over Cons type
 --- ---------------------------------------------
