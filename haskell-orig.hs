@@ -10,6 +10,7 @@ infixr 5 :|
 data Cons a = Nil
             | a :| Cons a
             deriving Show
+
 class Mappable f where
     map :: (a -> b) -> f a -> f b
 
@@ -19,7 +20,7 @@ instance Mappable Maybe where
 
 instance Mappable Cons where
     map f Nil = Nil
-    map f (a :| as) = (f a) :| map f as
+    map f (a :| as) = f a :| map f as
 
 class Foldable f where
     foldl :: (b -> a -> b) -> b -> f a -> b

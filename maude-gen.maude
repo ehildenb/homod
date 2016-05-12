@@ -24,14 +24,14 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
 endfm
 fmod DATA-MAYBE{a :: TRIV} is
     sort Maybe{a} .
-    op Nothing : -> Maybe{a} .
-    op Just_ : a$Elt -> Maybe{a} .
+    op Nothing : -> Maybe{a} [ctor] .
+    op Just_ : a$Elt -> Maybe{a} [ctor] .
 endfm
 
 fmod DATA-CONS{a :: TRIV} is
     sort Cons{a} .
-    op Nil : -> Cons{a} .
-    op _:|_ : a$Elt Cons{a} -> Cons{a} .
+    op Nil : -> Cons{a} [ctor] .
+    op _:|_ : a$Elt Cons{a} -> Cons{a} [ctor] .
 endfm
 load fm27.maude .
 
@@ -119,13 +119,11 @@ fmod TESTING is
 
     op even : -> =>{Nat,Bool} .
     eq even 0       = true .
-    eq even s(0)    = false .
+    eq even 1       = false .
     eq even s(s(N)) = even N .
 
     op odd : -> =>{Nat,Bool} .
-    eq odd 0        = false .
-    eq odd s(0)     = true .
-    eq odd s(s(N))  = odd N .
+    eq odd N = not (even N) .
 
     op double : -> =>{Nat,Nat} .
     eq double N = 2 * N .
@@ -148,21 +146,37 @@ fmod TESTING is
 endfm
 )
 --- map over Maybe type
+--- -------------------
 (reduce map even Nothing .)
+    --- produces: Nothing
+
 (reduce map odd (Just 3) .)
+    --- produces: Just true
 
 --- map over Cons type
+--- ------------------
 (reduce map odd list1 .)
+    --- produces: true :| true :| false :| false :| true :| false :| Nil
+
 (reduce map even list2 . )
+    --- produces: true :| true :| true :| false :| false :| false :| true :| false :| Nil
 
 --- function composition
+--- --------------------
 (reduce map (even . double) list1 . )
+    --- produces: true :| true :| true :| true :| true :| true :| Nil
 
 --- foldl over Cons type and function composition
+--- ---------------------------------------------
 (reduce foldl aanndd true (map (id . even . id . double . id) list1) .)
+    --- produces: true
 
 --- foldl numeric over Cons type
-(reduce foldl + 0 list1 .)
+--- ----------------------------
+(reduce foldl (+) 0 list1 .)
+    --- produces: 57
 
 --- map partially applied function over Cons type
+--- ---------------------------------------------
 (reduce map (+ 3) list1 .)
+    --- produces: 6 :| 8 :| 11 :| 5 :| 22 :| 23 :| Nil

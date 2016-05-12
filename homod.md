@@ -56,7 +56,7 @@ instance Mappable Maybe where
 
 instance Mappable Cons where
     map f Nil = Nil
-    map f (a :| as) = (f a) :| map f as
+    map f (a :| as) = f a :| map f as
 
 class Foldable f where
     foldl :: (b -> a -> b) -> b -> f a -> b
@@ -259,15 +259,22 @@ endfm
 )
 ```
 
-TODO: These are the instances from above. Notice that for the "higher-order"
-functionality, we have provided combinators which just place the correct
-constants (which have correct associated function sorts) in the correct places.
-The definitions are exactly the same (nearly copy paste). Partial application is
-immediately supported because of the `=>{ , }` view and the `__` operator. For
-instance if `+ : -> =>{Nat, =>{Nat, Nat}}`, we
+From the instance and typeclass declarations above, we would like to generate
+this Full Maude code. The equational definitions of the `map` and `foldl`
+functions look nearly identical to the Haskell definitions above. To make sure
+that the appropriate sort-checking will be used, various `FUNCTION{X,Y}`
+instances must be included into this module.
+
+To achieve the higher-order functionality here, all we have to do is use
+algebra. The sort-checking using `TRIV` views ensures that our terms are
+well-formed. Additionally, we get partial application of functions for free (as
+shown below).
 
 Testing
 -------
+
+Here is an example module which would use this higher-order functionality. We've
+provided it for demonstration purposes.
 
 ```maude{exec:maude-gen.maude}
 (
@@ -287,13 +294,11 @@ fmod TESTING is
 
     op even : -> =>{Nat,Bool} .
     eq even 0       = true .
-    eq even s(0)    = false .
+    eq even 1       = false .
     eq even s(s(N)) = even N .
 
     op odd : -> =>{Nat,Bool} .
-    eq odd 0        = false .
-    eq odd s(0)     = true .
-    eq odd s(s(N))  = odd N .
+    eq odd N = not (even N) .
 
     op double : -> =>{Nat,Nat} .
     eq double N = 2 * N .
@@ -317,6 +322,11 @@ endfm
 )
 ```
 
+At the top of the module we include all of the instances we need just to make
+the sort-checking and function application of the `TESTING` module work.
+
+
+
 TODO: Talk about defn of `aanndd`, `+` and `double`, notably how how `+` and
 `double` are defined in terms of their algebraic counterparts, but `aanndd` is
 defined more functionally (though we are using algebra here, but the point is
@@ -324,74 +334,45 @@ that that code could be copy-pasted from Haskell code).
 
 ```maude{exec:maude-gen.maude}
 --- map over Maybe type
+--- -------------------
 (reduce map even Nothing .)
+    --- produces: Nothing
+
 (reduce map odd (Just 3) .)
+    --- produces: Just true
 
 --- map over Cons type
+--- ------------------
 (reduce map odd list1 .)
+    --- produces: true :| true :| false :| false :| true :| false :| Nil
+
 (reduce map even list2 . )
+    --- produces: true :| true :| true :| false :| false :| false :| true :| false :| Nil
 
 --- function composition
+--- --------------------
 (reduce map (even . double) list1 . )
+    --- produces: true :| true :| true :| true :| true :| true :| Nil
 
 --- foldl over Cons type and function composition
+--- ---------------------------------------------
 (reduce foldl aanndd true (map (id . even . id . double . id) list1) .)
+    --- produces: true
 
 --- foldl numeric over Cons type
-(reduce foldl + 0 list1 .)
+--- ----------------------------
+(reduce foldl (+) 0 list1 .)
+    --- produces: 57
 
 --- map partially applied function over Cons type
+--- ---------------------------------------------
 (reduce map (+ 3) list1 .)
+    --- produces: 6 :| 8 :| 11 :| 5 :| 22 :| 23 :| Nil
 ```
 
 TODO: Talk about different things going on here. Make sure to mention
 partial application happening in the last example. Also make note of the problem
 we face when the sort to infer is ambiguous.
-
-### Output
-
-```maude
-reduce in TESTING :
-  (map).=>{=>{Nat,Bool},=>{Maybe{Nat},Maybe{Bool}}}even(Nothing).Maybe{Nat}
-result Maybe{Bool} :
-  (Nothing).Maybe{Bool}
-
-reduce in TESTING :
-  (map).=>{=>{Nat,Bool},=>{Maybe{Nat},Maybe{Bool}}}odd Just 3
-result Maybe{Bool} :
-  Just true
-
-reduce in TESTING :
-  (map).=>{=>{Nat,Bool},=>{Cons{Nat},Cons{Bool}}}odd list1
-result Cons{Bool} :
-  true :| true :| false :| false :| true :| false :|(Nil).Cons{Bool}
-
-reduce in TESTING :
-  (map).=>{=>{Nat,Bool},=>{Cons{Nat},Cons{Bool}}}even list2
-result Cons{Bool} :
-  true :| true :| true :| false :| false :| false :| true :| false :|(Nil).Cons{Bool}
-
-reduce in TESTING :
-  (map).=>{=>{Nat,Bool},=>{Cons{Nat},Cons{Bool}}}(even . double)list1
-result Cons{Bool} :
-  true :| true :| true :| true :| true :| true :|(Nil).Cons{Bool}
-
-reduce in TESTING :
-  (foldl).=>{=>{Bool,=>{Bool,Bool}},=>{Bool,=>{Cons{Bool},Bool}}}aanndd true(map).=>{=>{Nat,Bool},=>{Cons{Nat},Cons{
-    Bool}}}((id).=>{Bool,Bool}. even .(id).=>{Nat,Nat}. double .(id).=>{Nat,Nat})list1
-result Bool :
-  true
-
-reduce in TESTING :
-  (foldl).=>{=>{Nat,=>{Nat,Nat}},=>{Nat,=>{Cons{Nat},Nat}}}+ 0 list1
-result NzNat :
-  57
-
-reduce in TESTING :
-  (map).=>{=>{Nat,Nat},=>{Cons{Nat},Cons{Nat}}}+ 3 list1
-result Cons{Nat} :
-  6 :| 8 :| 11 :| 5 :| 22 :| 23 :|(Nil).Cons{Nat}
-```
 
 
 Future Work
