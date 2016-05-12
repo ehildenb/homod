@@ -69,15 +69,18 @@ instance Foldable Cons where
 ```
 
 Above is an example of two common Haskell algebraic datatypes, the `Maybe`
-datatype specifying the possible absence of data, as well as the `Cons` datatype
-representing a list. In addition, the typeclasses `Mappable` and `Foldable` are
-defined, along with instances `map` and `foldl` of those typeclasses using the
-`Maybe` and `Cons` datatypes. Note that both `map` and `foldl` above are higher
-order functions, something not explicitly available in Maude. We would like to
-be able to use Haskell-like higher order code within Maude, or even be able to
-use the above code directly in Maude. The following sections discuss how this
-and similar higher order Haskell modules can be converted into equivalent Maude
-modules.
+datatype specifies the possible absence of data/result and the `Cons` datatype
+represents a singly-linked list. In addition, the typeclasses `Mappable` and
+`Foldable` are defined. We've provided `Mappable` instances for both `Maybe` and
+`Cons`, which amounts to defining the function `map` for each of them. We've
+also provided a `Foldable` instance for `Cons`. Note that both `map` and `foldl`
+above are higher order functions, and that when using `map`, you must infer
+whether you are mapping over a `Cons` or a `Maybe`.
+
+We would like to be able to use Haskell-like higher order code within Maude, or
+even be able to use the above code directly in Maude. The following sections
+discuss how this and similar higher order Haskell modules can be converted into
+equivalent Maude modules.
 
 
 Maude Code
@@ -113,16 +116,13 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
 endfm
 ```
 
-The above code is boilerplate that will automatically be generated for any
-Haskell module. The most important of the three modules specified above is the
-`FUNCTION` module, parametrized on two sorts `X` and \texttt{Y}. With these
-sorts, it creates a new sort that represents a function from `X` to `Y`. In this
-fashion, we are able to simulate higher order functions in Maude from `X` to
-`Y`, provided that both `X` and `Y` have views to `TRIV`. We will see more
-examples of this later. Additionally, the `__` operator is used for function
-application, as it requires a function from `X` to `Y` and an element in `X` and
-returns an element in `Y`. By defining the `__` operator in this way, we also
-are able to rely on Maude's sort checker to rule out ill-formed programs.
+The above code acts as a "prelude" for other higher-order modules. The most
+important of the three modules specified above is the `FUNCTION` module,
+parametrized on two `TRIV` theories `X` and `Y`. Given the `Elt` sorts of these
+theories, it creates a new sort that represents functions `[X -> Y]`.
+`FUNCTION{X,Y}` also defines the `__` operator for function application. By
+defining the `__` operator in this way, we are able to rely on Maude's sort
+checker to rule out ill-formed simply-typed functional terms.
 
 The other modules are specified mostly for the user's convenience. The
 `FUNCTION-ID` module gives the identity function on `X`. The `FUNCTION-COMP`
@@ -136,28 +136,38 @@ sort checker will disallow usage of the `_._` operator.
 Generated
 ---------
 
-Note that we can't actually generate this code yet - this is what we would like
-to generate given the specification above.
+Note that we can't generate this code yet. We would like to generate the
+following code given the specification above.
 
 ### Core Maude
 
 ```maude{exec:maude-gen.maude}
 fmod DATA-MAYBE{a :: TRIV} is
     sort Maybe{a} .
-    op Nothing : -> Maybe{a} .
-    op Just_ : a$Elt -> Maybe{a} .
+    op Nothing : -> Maybe{a} [ctor] .
+    op Just_ : a$Elt -> Maybe{a} [ctor] .
 endfm
 
 fmod DATA-CONS{a :: TRIV} is
     sort Cons{a} .
-    op Nil : -> Cons{a} .
-    op _:|_ : a$Elt Cons{a} -> Cons{a} .
+    op Nil : -> Cons{a} [ctor] .
+    op _:|_ : a$Elt Cons{a} -> Cons{a} [ctor] .
 endfm
 ```
 
-TODO: These are just ADTs, so these are super easy to translate (because the
-models of eqnl logic are algebras). This is $\epsilon$-representation distance,
-so it's actually not that useful to provide these definitions in Haskell.
+Because Haskell data-types are just Algebraic Data Types (ADTs), their
+representation in Maude is nearly identical to that in Haskell. Maude has many
+fewer restrictions on the allowed syntax for defining ADTs; for instance we had
+to choose the syntax `:|` for the Haskell above to be compilable but Maude has
+no such restriction.
+
+Maude has open sorts, which means that we can also easily extend the `Maybe` or
+`Cons` data-types later with more data constructors. Adding data-constructors to
+a type in Haskell can be very painful - it requires adding definitions to all
+the places where that datatype is used. Additionally, Maude supports not just
+many-sorted equational logic, but order-sorted equational logic; this could
+conceivably be used to provide very natural data-subtyping, something that is
+not immediately present in Haskell.
 
 ### Full Maude
 
@@ -183,10 +193,18 @@ endv
 )
 ```
 
-TODO: These are parameterized views - they allow automatic creation of the
-correct function sorts (which removes a lot of boilerplate). Now the user can
-just say which function sorts they want, and the correct view to `TRIV` will be
-generated for them.
+To actually get usable datatypes and functions, we must instantiate the Maude
+modules above with the corresponding `TRIV` theories. Here, we provide some
+parameterized views (supported by Full Maude) which make this process easier. To
+get a function `[X -> Y]`, a user can use the view `=>{X,Y}`. As long as there
+are `TRIV` instances for both `X` and `Y` Full Maude will generate the
+appropriate view `=>{X,Y}` for the user.
+
+Note that in *Combining Algebra and Higher-Order Types*[@tannen] they talk
+about "base types" from which other more complex types are built. By having
+these parameterized views, we are declaring that anything of sort `TRIV` is a
+base type, as well as anything built from the data-constructors for `Maybe` and
+`Cons`. We've also added `=>{X,Y}` as a base-type here too.
 
 ```maude{exec:maude-gen.maude}
 (
