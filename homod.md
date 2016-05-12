@@ -33,7 +33,7 @@ sort/type inference).
 Original Haskell
 ================
 
-```haskell{exec:haskell-orig.hs}
+```haskell
 module HaskTest where
 
 import Prelude hiding (Foldable, Maybe, map, Just, Nothing, foldl)
@@ -92,7 +92,11 @@ Pre-Exists
 ```maude{exec:maude-gen.maude}
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
     sort =>{X,Y} .
-    op __   : =>{X,Y} X$Elt -> Y$Elt .
+    op __   : =>{X,Y} X$Elt -> Y$Elt [prec 40] .
+    op _$_  : =>{X,Y} X$Elt -> Y$Elt [prec 60] .
+    var f : =>{X,Y} .
+    var x : X$Elt .
+    eq f $ x = f x .
 endfm
 
 fmod FUNCTION-ID{X :: TRIV} is
@@ -107,7 +111,7 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     protecting FUNCTION{Y,Z} .
     protecting FUNCTION{X,Z} .
 
-    op _._ : =>{Y,Z} =>{X,Y} -> =>{X,Z} [gather (E e)].
+    op _._ : =>{Y,Z} =>{X,Y} -> =>{X,Z} [gather (E e) prec 44].
 
     var f : =>{X,Y} .
     var g : =>{Y,Z} .
@@ -289,6 +293,7 @@ fmod TESTING is
     protecting FUNCTION-COMP{Nat,Bool,Bool} .
     protecting FUNCTION-COMP{Nat,Nat,Bool} .
     protecting FUNCTION-COMP{Nat,Nat,Nat} .
+    protecting FUNCTION-COMP{Cons{Nat},Cons{Nat},Cons{Bool}} .
 
     vars N M : Nat .
 
@@ -354,9 +359,9 @@ that that code could be copy-pasted from Haskell code).
 (reduce map (even . double) list1 . )
     --- produces: true :| true :| true :| true :| true :| true :| Nil
 
---- foldl over Cons type and function composition
---- ---------------------------------------------
-(reduce foldl aanndd true (map (id . even . id . double . id) list1) .)
+--- foldl over Cons type and function composition, using `$` precedence operator
+--- ----------------------------------------------------------------------------
+(reduce foldl aanndd true $ map (id . even . id . double . id) list1 .)
     --- produces: true
 
 --- foldl numeric over Cons type
@@ -368,6 +373,11 @@ that that code could be copy-pasted from Haskell code).
 --- ---------------------------------------------
 (reduce map (+ 3) list1 .)
     --- produces: 6 :| 8 :| 11 :| 5 :| 22 :| 23 :| Nil
+
+--- composing two map examples with `$` precedence operator
+--- -------------------------------------------------------
+(reduce map even . map (+ 3) $ list1 .)
+    --- produces: true :| true :| false :| false :| true :| false :| Nil
 ```
 
 TODO: Talk about different things going on here. Make sure to mention
