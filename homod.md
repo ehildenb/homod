@@ -104,14 +104,23 @@ endfm
 
 The above code is boilerplate that will automatically be generated for any
 Haskell module. The most important of the three modules specified above is the
-`FUNCTION` module, paramatrized on two sorts `X` and \texttt{Y}. With these
+`FUNCTION` module, parametrized on two sorts `X` and \texttt{Y}. With these
 sorts, it creates a new sort that represents a function from `X` to `Y`. In this
-fashion, we are able to simulate higher order functions while still in Maude. We
-will see more examples of this later. Additionally, the `__` operator is used
-for function application, as it requires a function from `X` to `Y` and an
-element in `X` and returns an element in `Y`. By defining the `__` operator in
-this way, we also are able to rely on Maude's sort checker to rule out
-ill-formed programs.
+fashion, we are able to simulate higher order functions in Maude from `X` to
+`Y`, provided that both `X` and `Y` have views to `TRIV`. We will see more
+examples of this later. Additionally, the `__` operator is used for function
+application, as it requires a function from `X` to `Y` and an element in `X` and
+returns an element in `Y`. By defining the `__` operator in this way, we also
+are able to rely on Maude's sort checker to rule out ill-formed programs.
+
+The other modules are specified mostly for the user's convenience. The
+`FUNCTION-ID` module gives the identity function on `X`. The `FUNCTION-COMP`
+module is parametrized on `X`, `Y`, and `Z`, and allows one to compose a
+function from `Y` to `Z` with a function from `X` to `Y`, resulting in a
+function from `X` to `Z`. Here, using the `=>{.,.}` notation, higher order
+function composition can be expressed without much difficulty. Further, note
+that by our definition of `_._`, if two functions cannot be composed, Maude's
+sort checker will disallow usage of the `_._` operator.
 
 Generated
 ---------
