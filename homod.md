@@ -4,19 +4,34 @@ title: Generating Higher-order Maude from Haskell
 format: latex
 geometry: margin=2.0cm
 execute: maude-gen.maude haskell-orig.hs
+csl: ieee.csl
 ...
 
 
-Introduction
-============
+Combining Algebra and Higher-Order Types
+========================================
 
-TODO: Say stuff about paper (Tannen), say stuff about "people like Haskell". Say
-stuff about eqnl logic having HO power.
+It's known that combining algebras and the simply typed lambda calculus can be
+done correctly (in a way that preserves the Church-Rosser property of
+both)[@tannen]. Both of these can be expressed equationally, giving fully
+algebraic models of the combined theories.
+
+In this small document, we demonstrate this possibility by defining terms which
+behave as higher-order functions and integrating that with other equational
+theories. All of this is expressed in many-sorted equational logic, with the
+sort-checking performing the type-checking for the higher-order functional part,
+and normal equational reduction performing the equivalent of beta-reduction.
+
+Rather than offering lambda abstraction as an operation for defining lambda
+terms, we choose the combinator route. To define a "function", you provide a
+constant of the appropriate sort as well as equational definitions which look
+very functional in nature. We have demonstrated a few higher-order functions
+(`map` and `foldl`), as well as partial function application (with appropriate
+sort/type inference).
+
 
 Original Haskell
 ================
-
-### Data Declarations (with ADTs)
 
 ```haskell{exec:haskell-orig.hs}
 module HaskTest where
@@ -31,11 +46,7 @@ infixr 5 :|
 data Cons a = Nil
             | a :| Cons a
             deriving Show
-```
 
-### Type Classes
-
-```haskell{exec:haskell-orig.hs}
 class Mappable f where
     map :: (a -> b) -> f a -> f b
 
@@ -379,3 +390,17 @@ things which most people associate with functional programming (eg. the Haskell
 
 TODO: More general partial application/sort inference.
 
+
+References
+==========
+
+---
+references:
+-   id: tannen
+    author:
+    -   family: Breazu-Tannen
+        given: Val
+    issued:
+    -   year: 1988
+    title: Combining Algebra and Higher-Order Types
+...
