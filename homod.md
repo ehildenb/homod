@@ -2,7 +2,7 @@
 author: Everett Hildenbrandt, Lucas Pena
 title: Generating Higher-order Maude from Haskell
 format: latex
-geometry: margin=2.0cm
+geometry: margin=2.7cm
 execute: maude-gen.maude haskell-orig.hs
 csl: ieee.csl
 ...
@@ -68,7 +68,7 @@ instance Foldable Cons where
 --endmodule
 ```
 
-Above is an example of two common Haskell algebraic datatypes, the `Maybe`
+Above is an example of two common Haskell algebraic datatypes; the `Maybe`
 datatype specifies the possible absence of data/result and the `Cons` datatype
 represents a singly-linked list. In addition, the typeclasses `Mappable` and
 `Foldable` are defined. We've provided `Mappable` instances for both `Maybe` and
@@ -128,7 +128,7 @@ theories, it creates a new sort that represents functions `[X -> Y]`.
 defining the `__` operator in this way, we are able to rely on Maude's sort
 checker to rule out ill-formed simply-typed functional terms. We also define the
 `_$_` operator in this module, which is based off Haskell's function of the same
-name, and is used in order to avoid parentheses.
+name, and is used as a low-precedence function application operator.
 
 The other modules are specified mostly for the user's convenience. The
 `FUNCTION-ID` module gives the identity function on `X`. The `FUNCTION-COMP`
@@ -142,8 +142,7 @@ sort checker will disallow usage of the `_._` operator.
 Generated
 ---------
 
-Note that we can't generate this code yet. We would like to generate the
-following code given the specification above.
+We would like to generate the following code given the specification above.
 
 ### Core Maude
 
@@ -206,11 +205,13 @@ get a function `[X -> Y]`, a user can use the view `=>{X,Y}`. As long as there
 are `TRIV` instances for both `X` and `Y` Full Maude will generate the
 appropriate view `=>{X,Y}` for the user.
 
-Note that in *Combining Algebra and Higher-Order Types*[@tannen] they talk
-about "base types" from which other more complex types are built. By having
-these parameterized views, we are declaring that anything of sort `TRIV` is a
-base type, as well as anything built from the data-constructors for `Maybe` and
-`Cons`. We've also added `=>{X,Y}` as a base-type here too.
+In *Combining Algebra and Higher-Order Types*[@tannen], a base type is a sort of
+some equational theory. These types can be combined using lambda-terms to form
+other more complex types. By having these parameterized views, we are declaring
+that anything of sort `TRIV` is a base type, as well as anything built from the
+data-constructors for `Maybe` and `Cons`. We've also added `=>{X,Y}` as a
+base-type here too, meaning we can build multi-argument functions and
+higher-order functions.
 
 ```maude{exec:maude-gen.maude}
 (
@@ -299,6 +300,19 @@ fmod TESTING is
 
     vars N M : Nat .
 
+    --- some constants (combinator-style functions) to play with
+    op aanndd : -> =>{Bool, =>{Bool,Bool}} .
+    eq aanndd true true     = true .
+    eq aanndd true false    = false .
+    eq aanndd false true    = false .
+    eq aanndd false false   = false .
+
+    op double : -> =>{Nat,Nat} .
+    eq double N = 2 * N .
+
+    op + : -> =>{Nat, =>{Nat,Nat}} .
+    eq + N M = N + M .
+
     op even : -> =>{Nat,Bool} .
     eq even 0       = true .
     eq even 1       = false .
@@ -307,19 +321,7 @@ fmod TESTING is
     op odd : -> =>{Nat,Bool} .
     eq odd N = not (even N) .
 
-    op double : -> =>{Nat,Nat} .
-    eq double N = 2 * N .
-
-    op aanndd : -> =>{Bool, =>{Bool,Bool}} .
-    eq aanndd true true     = true .
-    eq aanndd true false    = false .
-    eq aanndd false true    = false .
-    eq aanndd false false   = false .
-
-    op + : -> =>{Nat, =>{Nat,Nat}} .
-    eq + N M = N + M .
-
-    --- some constants to play with
+    --- some constants (data)
     op list1 : -> Cons{Nat} .
     eq list1 = 3 :| 5 :| 8 :| 2 :| 19 :| 20 :| Nil .
 
@@ -334,18 +336,20 @@ the sort-checking and function application of the `TESTING` module
 work. Ideally, a user would not have to import these manually, our tool would
 infer which modules need to be protected based on what the user writes. For
 example, if `map even` is used over a list, then we would like to infer that
-`INSTANCE-MAPPABLE-CONS{Nat, Bool}` should be extended.
+`INSTANCE-MAPPABLE-CONS{Nat, Bool}` should be included.
 
-Further, one can define functions both algebraically and syntactically. For
-example, `even` is defined purely functionally, explicitly specifying the value
-of `even N` for all `N`. On the other hand, `double` and `+` are defined purely
-algebraically, using Maude's builtin `*` and `+` operators
-respectively. Interestingly, `odd` is defined partially functionally and
-partially algebraically. It uses the `even` definition that was previously
-functionally defined, as well as Maude's builtin `not` operator. These
-definition all are very similar to equivalent Haskell definitions, so it is
-feasible that we would be able to translate Haskell definitions into equivalent
-Maude definitions such as those above.
+Further, one can define functions both algebraically and functionally. For
+example, `aanndd` is defined in a functional way (as it would appear in
+Haskell), explicitly specifying the value of `aanndd B1 B2` for all `B1` and
+`B2`. On the other hand, `double` and `+` are defined purely algebraically,
+using Maude's builtin `*` and `+` operators respectively.
+
+The `even` and `odd` functions are a bit more interesting. `even` is defined
+purely functionally for the base-cases, but for the recursive case it has an
+algebraic term within a functional term. `odd` is the other way around - it is
+defined with a functional term (`even N`) inside an algebraic term (`not _`).
+This demonstrates how algebraic and higher-order functional definitions can be
+combined freely, leading to compact specifications.
 
 ```maude{exec:maude-gen.maude}
 --- map over Maybe type
@@ -395,42 +399,48 @@ few examples are basic examples using `map` over `Maybe` and `Cons`
 datatypes. The next couple of examples show the use of function composition and
 basic uses of `foldl`. Note in the seventh example, `id` is used multiple times,
 and Maude's sort checker is able to infer when it is the identity function over
-`Nat` and when it is the identity function over `Bool`. We also make use of the
-`$` precedence operator in this example to help avoid extra parentheses. The
-next example is another basic use of `map` over a list, though note the function
-used is `(+ 3)`. Here, with no additional work, Maude gives us such a partial
-application for free. Unfortunately, a partial function like `map even` can be
-from `Maybe{Nat}` to `Maybe{Bool}` or from `Cons{Nat}` to `Cons{Bool}`, so
-currently we are unable to infer a generic sort for such partial functions
-without additional information. The last example is shows function composition
-along with partial application, as well as another use of the `$`
-operator. Here, since a list is used, Maude is able to infer the correct sort
-for the partial function `map even`.
+`Nat` and when it is the identity function over `Bool`.
+
+The next example is another basic use of `map` over a list, though note the
+function used is `(+ 3)`. Here, with no additional work, Maude gives us partial
+application. Unfortunately, a partial function like `map even` can be
+`=>{Maybe{Nat},Maybe{Bool}}` or `=>{Cons{Nat},Cons{Bool}}`, so currently we are
+unable to infer a generic sort for such partial functions without additional
+information. The last example shows function composition along with partial
+application, as well as another use of the `$` precedence operator.  Here, since
+a list is used, Maude is able to infer the correct sort for the partially
+applied functions `map even`, `map (+ 3)`, and their composition.
 
 
 Future Work
 ===========
 
-For future work, the main thing we would like to do would be to actually
-generate much of the above Maude code using a Full Maude parser. This would
-allow users to write higher order functions in Haskell, and immediately see how
-that can be translated to Maude. One could then use some Maude-specific
-functionality, such as the ITP, to prove interesting properties about his or her
-code.
+One nice thing we would like to do would be to actually generate much of the
+above Maude code using a Full Maude parser. This would allow users to write
+higher order functions in Haskell, and immediately see how that can be
+translated to Maude. One could then use some Maude-specific functionality, such
+as the ITP, to prove interesting properties about his or her code. Additionally,
+we can achieve slightly more compact representations of purely functional code
+using Haskell as input, then use it directly in other Maude modules.
 
 Another interesting functionality would be adding support for translating
-Haskell's lambda abstraction. We could use one of the `LAMBDA2CL` compilers to
-help automate this process. We would also have to do type inference to determine
-which modules to import. Additionally, we could also add other "nice" things
-which people associate with functional programming, such as other functionality
-that is currently in the Haskell `Prelude`.
+Haskell's lambda abstraction. This is possible using one of the various
+`LAMBDA-2-CL` compilers discussed in class combined with some type inference to
+determine which instances of `FUNCTION{X,Y}` to include. A type inference
+algorithm would be useful in a more general sense though - it would allow for
+people to not have to write the includes at the top of a module where they want
+to use first/higher-order functional programming. Instead, using Full Maude, we
+could scan the module for uses of functional programming and infer the correct
+includes to use.
 
 Finally, we could add support for more general sort inference when using partial
 application. With this, `map even` could initially be inferred with a more
 general sort such as `=>{f{a}, f{b}}`, then when instantiated with a list could
 be converted to the sort `=>{Cons{a}, Cons{b}}`. Currently, as previously
 mentioned, Maude's parser will not accept `map even` or similar partial
-functions if the sort is ambiguous.
+functions if the sort is ambiguous (as the two sorts it would infer for `Cons`
+and `Maybe` are in disconnected components). This would enable "true typeclass"
+support, as Haskell has.
 
 
 References

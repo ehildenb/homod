@@ -122,6 +122,19 @@ fmod TESTING is
 
     vars N M : Nat .
 
+    --- some constants (combinator-style functions) to play with
+    op aanndd : -> =>{Bool, =>{Bool,Bool}} .
+    eq aanndd true true     = true .
+    eq aanndd true false    = false .
+    eq aanndd false true    = false .
+    eq aanndd false false   = false .
+
+    op double : -> =>{Nat,Nat} .
+    eq double N = 2 * N .
+
+    op + : -> =>{Nat, =>{Nat,Nat}} .
+    eq + N M = N + M .
+
     op even : -> =>{Nat,Bool} .
     eq even 0       = true .
     eq even 1       = false .
@@ -130,19 +143,7 @@ fmod TESTING is
     op odd : -> =>{Nat,Bool} .
     eq odd N = not (even N) .
 
-    op double : -> =>{Nat,Nat} .
-    eq double N = 2 * N .
-
-    op aanndd : -> =>{Bool, =>{Bool,Bool}} .
-    eq aanndd true true     = true .
-    eq aanndd true false    = false .
-    eq aanndd false true    = false .
-    eq aanndd false false   = false .
-
-    op + : -> =>{Nat, =>{Nat,Nat}} .
-    eq + N M = N + M .
-
-    --- some constants to play with
+    --- some constants (data)
     op list1 : -> Cons{Nat} .
     eq list1 = 3 :| 5 :| 8 :| 2 :| 19 :| 20 :| Nil .
 
