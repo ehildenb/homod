@@ -1,10 +1,14 @@
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
+
     sort =>{X,Y} .
+
     op __   : =>{X,Y} X$Elt -> Y$Elt [prec 40] .
     op _$_  : =>{X,Y} X$Elt -> Y$Elt [prec 60] .
+
     var f : =>{X,Y} .
     var x : X$Elt .
     eq f $ x = f x .
+
 endfm
 
 fmod FUNCTION-ID{X :: TRIV} is
@@ -37,157 +41,3 @@ fmod DATA-CONS{a :: TRIV} is
     op Nil : -> Cons{a} [ctor] .
     op _:|_ : a$Elt Cons{a} -> Cons{a} [ctor] .
 endfm
-load fm27.maude .
-
-(
-view Maybe{a :: TRIV} from TRIV to DATA-MAYBE{a} is
-    sort Elt to Maybe{a} .
-endv
-)
-
-(
-view Cons{a :: TRIV} from TRIV to DATA-CONS{a} is
-    sort Elt to Cons{a} .
-endv
-)
-
-(
-view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
-    sort Elt to =>{X,Y} .
-endv
-)
-(
-fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
-    protecting FUNCTION{a, b} .
-    protecting FUNCTION{Maybe{a}, Maybe{b}} .
-    extending FUNCTION{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
-
-    op map : -> =>{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
-
-    var f : =>{a,b} .
-    var a : a$Elt .
-    eq map f Nothing = Nothing .
-    eq map f (Just a) = Just (f a) .
-endfm
-)
-
-(
-fmod INSTANCE-MAPPABLE-CONS{a :: TRIV, b :: TRIV} is
-    protecting FUNCTION{a, b} .
-    protecting FUNCTION{Cons{a}, Cons{b}} .
-    extending FUNCTION{=>{a,b}, =>{Cons{a},Cons{b}}} .
-
-    op map : -> =>{=>{a,b}, =>{Cons{a},Cons{b}}} .
-
-    var f   : =>{a,b} .
-    var a   : a$Elt .
-    var as  : Cons{a} .
-    eq map f Nil = Nil .
-    eq map f (a :| as) = f a :| map f as .
-endfm
-)
-
-(
-fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
-    protecting FUNCTION{a, b} .
-    protecting FUNCTION{b, =>{a,b}} .
-    protecting FUNCTION{Cons{a}, b} .
-    protecting FUNCTION{b, =>{Cons{a}, b}} .
-    extending FUNCTION{=>{b, =>{a,b}}, =>{b, =>{Cons{a}, b}}} .
-
-    op foldl : -> =>{=>{b,=>{a,b}}, =>{b, =>{Cons{a}, b}}} .
-
-    var f   : =>{b, =>{a,b}} .
-    var b   : b$Elt .
-    var a   : a$Elt .
-    var as  : Cons{a} .
-
-    eq foldl f b Nil = b .
-    eq foldl f b (a :| as) = foldl f (f b a) as .
-endfm
-)
-(
-fmod TESTING is
-    extending INSTANCE-MAPPABLE-MAYBE{Nat, Bool} .
-    extending INSTANCE-MAPPABLE-CONS{Nat, Nat} .
-    extending INSTANCE-MAPPABLE-CONS{Nat, Bool} .
-    extending INSTANCE-FOLDABLE-CONS{Bool, Bool} .
-    extending INSTANCE-FOLDABLE-CONS{Nat, Nat} .
-    protecting FUNCTION-ID{Bool} .
-    protecting FUNCTION-ID{Nat} .
-    protecting FUNCTION-COMP{Nat,Bool,Bool} .
-    protecting FUNCTION-COMP{Nat,Nat,Bool} .
-    protecting FUNCTION-COMP{Nat,Nat,Nat} .
-    protecting FUNCTION-COMP{Cons{Nat},Cons{Nat},Cons{Bool}} .
-
-    vars N M : Nat .
-
-    --- some constants (combinator-style functions) to play with
-    op aanndd : -> =>{Bool, =>{Bool,Bool}} .
-    eq aanndd true true     = true .
-    eq aanndd true false    = false .
-    eq aanndd false true    = false .
-    eq aanndd false false   = false .
-
-    op double : -> =>{Nat,Nat} .
-    eq double N = 2 * N .
-
-    op + : -> =>{Nat, =>{Nat,Nat}} .
-    eq + N M = N + M .
-
-    op even : -> =>{Nat,Bool} .
-    eq even 0       = true .
-    eq even 1       = false .
-    eq even s(s(N)) = even N .
-
-    op odd : -> =>{Nat,Bool} .
-    eq odd N = not (even N) .
-
-    --- some constants (data)
-    op list1 : -> Cons{Nat} .
-    eq list1 = 3 :| 5 :| 8 :| 2 :| 19 :| 20 :| Nil .
-
-    op list2 : -> Cons{Nat} .
-    eq list2 = 16 :| 100 :| 0 :| 3 :| 9 :| 19 :| 22 :| 101 :| Nil .
-endfm
-)
---- map over Maybe type
---- -------------------
-(reduce map even Nothing .)
-    --- produces: Nothing
-
-(reduce map odd (Just 3) .)
-    --- produces: Just true
-
---- map over Cons type
---- ------------------
-(reduce map odd list1 .)
-    --- produces: true :| true :| false :| false :| true :| false :| Nil
-
-(reduce map even list2 . )
-    --- produces: true :| true :| true :| false :| false :| false :| true :| false :| Nil
-
---- function composition
---- --------------------
-(reduce map (even . double) list1 . )
-    --- produces: true :| true :| true :| true :| true :| true :| Nil
-
---- foldl numeric over Cons type
---- ----------------------------
-(reduce foldl (+) 0 list1 .)
-    --- produces: 57
-
---- foldl over Cons type and function composition, using `$` precedence operator
---- ----------------------------------------------------------------------------
-(reduce foldl aanndd true $ map (id . even . id . double . id) list1 .)
-    --- produces: true
-
---- map partially applied function over Cons type
---- ---------------------------------------------
-(reduce map (+ 3) list1 .)
-    --- produces: 6 :| 8 :| 11 :| 5 :| 22 :| 23 :| Nil
-
---- composing two map examples with `$` precedence operator
---- -------------------------------------------------------
-(reduce map even . map (+ 3) $ list1 .)
-    --- produces: true :| true :| false :| false :| true :| false :| Nil

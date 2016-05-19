@@ -1,0 +1,47 @@
+load fm-gen.maude .
+
+(
+fmod COMBINATOR-I{X :: TRIV} is
+    extending FUNCTION{X,X} .
+
+    op I : -> =>{X,X} .
+
+    var x : X$Elt .
+    eq I x = x .
+endfm
+)
+
+(
+fmod COMBINATOR-K{X :: TRIV, Y :: TRIV} is
+    extending FUNCTION{X, =>{Y,X}} .
+
+    op K : -> =>{X, =>{Y,X}} .
+
+    var x : X$Elt .
+    var y : Y$Elt .
+    eq K x y = x .
+endfm
+)
+
+(
+fmod COMBINATOR-S{Z :: TRIV, YZ :: TRIV, SXYZ :: TRIV} is
+    extending FUNCTION{=>{Z,=>{YZ,SXYZ}},=>{=>{Z,YZ},=>{Z,SXYZ}}} .
+
+    op S : -> =>{=>{Z,=>{YZ,SXYZ}}, =>{=>{Z,YZ}, =>{Z,SXYZ}}} .
+
+    var x : =>{Z,=>{YZ,SXYZ}} .
+    var y : =>{Z,YZ} .
+    var z : Z$Elt .
+    eq S x y z = x z $ y z .
+endfm
+)
+
+(
+fmod TESTING2 is
+    protecting TESTING .
+    protecting COMBINATOR-I{Int} .
+    protecting COMBINATOR-K{Int,Int} .
+    protecting COMBINATOR-S{Int,Int,Int} .
+
+endfm
+)

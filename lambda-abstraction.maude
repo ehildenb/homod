@@ -1,0 +1,45 @@
+load maude-gen.maude .
+
+fmod LAMBDA-FUNCTION{X :: TRIV, Y :: TRIV} is
+    protecting FUNCTION{X,Y} .
+
+    sorts V{X} T{X} Subst{X} .
+    subsorts V{X} X$Elt < T{X} .
+    sort T{Y} .
+    subsort Y$Elt < T{Y} .
+
+    op \_._ : V{X} T{Y} -> =>{X,Y} .
+    op _:=_ : V{X} T{X} -> Subst{X} .
+    op [_]_ : Subst{X} T{X} -> T{X} .
+    op [_]_ : Subst{X} T{Y} -> T{Y} .
+    op [_]_ : Subst{X} =>{X,Y} -> =>{X,Y} .
+
+    vars X1 X2 : V{X} . vars x1 x2 : T{X} .
+    vars Y1 Y2 : T{Y} .
+    var x' : X$Elt . var y' : Y$Elt .
+    var f : =>{X,Y} .
+
+    eq (\ X1 . Y1) x1 = [X1 := x1] Y1 .
+
+    eq [X1 := x1] x' = x' .
+    eq [X1 := x1] y' = y' .
+
+    ceq [X1 := x1] X2 = x1 if X1 == X2 .
+    ceq [X1 := x1] X2 = X2 if not X1 == X2 .
+
+    ceq [X1 := x1] (\ X2 . Y1) = \ X2 . Y1              if X1 == X2 .
+    ceq [X1 := x1] (\ X2 . Y1) = \ X2 . ([X1 := x1] Y1) if not X1 == X2 .
+
+    eq [X1 := x1] (f x2) = ([X1 := x1] f) ([X1 := x1] x2) .
+    eq [X1 := x1] f = f [owise] .
+
+endfm
+
+
+fmod TESTING is
+    protecting LAMBDA-FUNCTION{Int,Bool} .
+    op x : -> V{Int} .
+    op +3 : -> =>{Int,Int} .
+    var N : Int .
+    eq +3 N = N + 3 .
+endfm
