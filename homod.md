@@ -3,7 +3,7 @@ author: Everett Hildenbrandt, Lucas Pena
 title: Generating Higher-order Maude from Haskell
 format: latex
 geometry: margin=2.7cm
-execute: maude-gen.maude fm-gen.maude lambda-abstraction.maude typed-combinators.maude
+execute: homod.maude
 csl: ieee.csl
 ...
 
@@ -89,9 +89,11 @@ Maude Code
 Pre-Exists
 ----------
 
-```maude{exec:maude-gen.maude}
-fmod FUNCTION{X :: TRIV, Y :: TRIV} is
+```maude{exec:homod.maude}
+load fm27.maude .
 
+(
+fmod FUNCTION{X :: TRIV, Y :: TRIV} is
     sort =>{X,Y} .
 
     op __   : =>{X,Y} X$Elt -> Y$Elt [prec 40] .
@@ -100,20 +102,41 @@ fmod FUNCTION{X :: TRIV, Y :: TRIV} is
     var f : =>{X,Y} .
     var x : X$Elt .
     eq f $ x = f x .
-
 endfm
+)
 
+(
+view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
+    sort Elt to =>{X,Y} .
+endv
+)
+
+(
 fmod FUNCTION-ID{X :: TRIV} is
-    protecting FUNCTION{X,X} .
+    extending FUNCTION{X,X} .
+
     op id : -> =>{X,X} .
     var x : X$Elt .
     eq id x = x .
 endfm
+)
 
+(
+fmod FUNCTION-CONST{X :: TRIV, Y :: TRIV} is
+    extending FUNCTION{X,=>{Y,X}} .
+
+    op const : -> =>{X, =>{Y,X}} .
+    var x : X$Elt .
+    var y : Y$Elt .
+    eq const x y = x .
+endfm
+)
+
+(
 fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
-    protecting FUNCTION{X,Y} .
-    protecting FUNCTION{Y,Z} .
-    protecting FUNCTION{X,Z} .
+    extending FUNCTION{X,Y} .
+    extending FUNCTION{Y,Z} .
+    extending FUNCTION{X,Z} .
 
     op _._ : =>{Y,Z} =>{X,Y} -> =>{X,Z} [gather (E e) prec 44].
 
@@ -122,7 +145,71 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     var x : X$Elt .
     eq (g . f) x = g (f x) .
 endfm
+)
 ```
+
+```maude{exec:homod.maude}
+(
+fmod DATA-MAYBE{a :: TRIV} is
+    sort Maybe{a} .
+    op Nothing : -> Maybe{a} [ctor] .
+    op Just_ : a$Elt -> Maybe{a} [ctor] .
+endfm
+)
+
+(
+view Maybe{a :: TRIV} from TRIV to DATA-MAYBE{a} is
+    sort Elt to Maybe{a} .
+endv
+)
+
+(
+fmod DATA-CONS{a :: TRIV} is
+    sort Cons{a} .
+    op Nil : -> Cons{a} [ctor] .
+    op _:|_ : a$Elt Cons{a} -> Cons{a} [ctor] .
+endfm
+)
+
+(
+view Cons{a :: TRIV} from TRIV to DATA-CONS{a} is
+    sort Elt to Cons{a} .
+endv
+)
+```
+
+```maude
+fmod COMBINATOR-I{X :: TRIV} is
+    extending FUNCTION{X,X} .
+
+    op I : -> =>{X,X} [ctor] .
+
+    var x : X$Elt .
+    eq I x = x .
+endfm
+
+fmod COMBINATOR-K{X :: TRIV, Y :: TRIV} is
+    extending FUNCTION{X,Y} .
+
+    op K : -> =>{X, =>{Y,X}} .
+
+    var x : X$Elt .
+    var y : Y$Elt .
+    eq K x y = x .
+endfm
+
+fmod COMBINATOR-S{A :: TRIV, B :: TRIV, C :: TRIV} is
+    extending FUNCTION{=>{A,=>{B,C}}, =>{=>{A,B}, =>{A,C}}} .
+
+    op S : -> =>{=>{A,=>{B,C}}, =>{=>{A,B}, =>{A,C}}} .
+
+    var x : X$Elt .
+    var y : Y$Elt .
+    var z : Z$Elt .
+    eq S x y z = x y (y z) .
+endfm
+```
+
 
 ```maude{exec:lambda-abstraction.maude}
 load maude-gen.maude .
@@ -135,7 +222,7 @@ fmod LAMBDA-FUNCTION{X :: TRIV, Y :: TRIV} is
     sort T{Y} .
     subsort Y$Elt < T{Y} .
 
-    op \_._ : V{X} T{Y} -> =>{X,Y} .
+    op \_->_ : V{X} T{Y} -> =>{X,Y} .
     op _:=_ : V{X} T{X} -> Subst{X} .
     op [_]_ : Subst{X} T{X} -> T{X} .
     op [_]_ : Subst{X} T{Y} -> T{Y} .
@@ -146,7 +233,7 @@ fmod LAMBDA-FUNCTION{X :: TRIV, Y :: TRIV} is
     var x' : X$Elt . var y' : Y$Elt .
     var f : =>{X,Y} .
 
-    eq (\ X1 . Y1) x1 = [X1 := x1] Y1 .
+    eq (\ X1 -> Y1) x1 = [X1 := x1] Y1 .
 
     eq [X1 := x1] x' = x' .
     eq [X1 := x1] y' = y' .
@@ -154,8 +241,8 @@ fmod LAMBDA-FUNCTION{X :: TRIV, Y :: TRIV} is
     ceq [X1 := x1] X2 = x1 if X1 == X2 .
     ceq [X1 := x1] X2 = X2 if not X1 == X2 .
 
-    ceq [X1 := x1] (\ X2 . Y1) = \ X2 . Y1              if X1 == X2 .
-    ceq [X1 := x1] (\ X2 . Y1) = \ X2 . ([X1 := x1] Y1) if not X1 == X2 .
+    ceq [X1 := x1] (\ X2 -> Y1) = \ X2 -> Y1              if X1 == X2 .
+    ceq [X1 := x1] (\ X2 -> Y1) = \ X2 -> ([X1 := x1] Y1) if not X1 == X2 .
 
     eq [X1 := x1] (f x2) = ([X1 := x1] f) ([X1 := x1] x2) .
     eq [X1 := x1] f = f [owise] .
@@ -198,20 +285,6 @@ We would like to generate the following code given the specification above.
 
 ### Core Maude
 
-```maude{exec:maude-gen.maude}
-fmod DATA-MAYBE{a :: TRIV} is
-    sort Maybe{a} .
-    op Nothing : -> Maybe{a} [ctor] .
-    op Just_ : a$Elt -> Maybe{a} [ctor] .
-endfm
-
-fmod DATA-CONS{a :: TRIV} is
-    sort Cons{a} .
-    op Nil : -> Cons{a} [ctor] .
-    op _:|_ : a$Elt Cons{a} -> Cons{a} [ctor] .
-endfm
-```
-
 Because Haskell data-types are just Algebraic Data Types (ADTs), their
 representation in Maude is nearly identical to that in Haskell. Maude has many
 fewer restrictions on the allowed syntax for defining ADTs; for instance we had
@@ -228,78 +301,6 @@ not immediately present in Haskell.
 
 ### Full Maude
 
-```maude{exec:fm-gen.maude}
-load maude-gen.maude .
-load fm27.maude .
-
-(
-view Maybe{a :: TRIV} from TRIV to DATA-MAYBE{a} is
-    sort Elt to Maybe{a} .
-endv
-)
-
-(
-view Cons{a :: TRIV} from TRIV to DATA-CONS{a} is
-    sort Elt to Cons{a} .
-endv
-)
-
-(
-view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
-    sort Elt to =>{X,Y} .
-endv
-)
-```
-
-```maude{exec:typed-combinators.maude}
-load fm-gen.maude .
-
-(
-fmod COMBINATOR-I{X :: TRIV} is
-    extending FUNCTION{X,X} .
-
-    op I : -> =>{X,X} .
-
-    var x : X$Elt .
-    eq I x = x .
-endfm
-)
-
-(
-fmod COMBINATOR-K{X :: TRIV, Y :: TRIV} is
-    extending FUNCTION{X, =>{Y,X}} .
-
-    op K : -> =>{X, =>{Y,X}} .
-
-    var x : X$Elt .
-    var y : Y$Elt .
-    eq K x y = x .
-endfm
-)
-
-(
-fmod COMBINATOR-S{Z :: TRIV, YZ :: TRIV, SXYZ :: TRIV} is
-    extending FUNCTION{=>{Z,=>{YZ,SXYZ}},=>{=>{Z,YZ},=>{Z,SXYZ}}} .
-
-    op S : -> =>{=>{Z,=>{YZ,SXYZ}}, =>{=>{Z,YZ}, =>{Z,SXYZ}}} .
-
-    var x : =>{Z,=>{YZ,SXYZ}} .
-    var y : =>{Z,YZ} .
-    var z : Z$Elt .
-    eq S x y z = x z $ y z .
-endfm
-)
-
-(
-fmod TESTING2 is
-    protecting TESTING .
-    protecting COMBINATOR-I{Int} .
-    protecting COMBINATOR-K{Int,Int} .
-    protecting COMBINATOR-S{Int,Int,Int} .
-endfm
-)
-```
-
 To actually get usable datatypes and functions, we must instantiate the Maude
 modules above with the corresponding `TRIV` theories. Here, we provide some
 parameterized views (supported by Full Maude) which make this process easier. To
@@ -315,7 +316,7 @@ data-constructors for `Maybe` and `Cons`. We've also added `=>{X,Y}` as a
 base-type here too, meaning we can build multi-argument functions and
 higher-order functions.
 
-```maude{exec:fm-gen.maude}
+```maude{exec:homod.maude}
 (
 fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
     extending FUNCTION{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
@@ -377,7 +378,7 @@ Testing
 Here is an example module which would use this higher-order functionality. We've
 provided it for demonstration purposes.
 
-```maude{exec:fm-gen.maude}
+```maude{exec:homod.maude}
 (
 fmod TESTING is
     extending INSTANCE-MAPPABLE-MAYBE{Nat, Bool} .
@@ -445,7 +446,7 @@ defined with a functional term (`even N`) inside an algebraic term (`not _`).
 This demonstrates how algebraic and higher-order functional definitions can be
 combined freely, leading to compact specifications.
 
-```maude{exec:fm-gen.maude}
+```maude{exec:homod.maude}
 --- map over Maybe type
 --- -------------------
 (reduce map even Nothing .)
