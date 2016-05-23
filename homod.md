@@ -90,10 +90,69 @@ Pre-Exists
 ----------
 
 ```maude{exec:homod.maude}
-load fm27.maude .
+set include BOOL off .
+set include QID off .
+set include NAT off .
 
-(
+fth EQ is
+    including TRIV .
+    protecting TRUTH-VALUE .
+    op _==_ : Elt Elt -> Bool .
+endfth
+
+fmod VAR{XV :: EQ, X :: TRIV} is
+    subsort XV$Elt < X$Elt .
+endfm
+
+fmod VAR-NAME is
+    protecting BOOL .
+    sort Var .
+    ops x y z : -> Var [ctor] .
+    op ,_ : Var -> Var [ctor] .
+endfm
+
+view Var from EQ to VAR-NAME is
+    sort Elt to Var .
+endv
+
+fmod SUBST{X :: TRIV} is
+    protecting META-LEVEL .
+    protecting VAR{Var,X} .
+
+    sort Subst{X} .
+    sort Var{X} .
+    subsort Var < Var{X} .
+
+    op [_:=_]   : Var{X} X$Elt -> Subst{X} .
+    op __       : Subst{X} X$Elt -> X$Elt .
+    op __       : Subst{X} GroundTermList -> GroundTermList .
+    op error    : -> X$Elt [ctor] .
+
+    var S       : Subst{X} .
+    vars x1 x2  : Var{X} .
+    var X       : X$Elt .
+    var GTS     : GroundTermList .
+    var GT GT'  : GroundTerm .
+    var Q       : Qid .
+
+    ceq [x1 := X] x2 = X    if x1 == x2 .
+    ceq [x1 := X] x2 = x2   if not x1 == x2 .
+
+    ceq S X = downTerm(GT, error)
+        if Q[GTS] := upTerm(X)
+        /\ GT := Q[S GTS] .
+    ceq S (GT , GTS) = S GT , S GTS if not GTS == empty .
+    ceq S GT = if X == error then GT else upTerm(S X) fi
+        if X := downTerm(GT, error) .
+    ceq S X = X if upTerm(X) :: Constant .
+
+
+endfm
+
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
+    protecting SUBST{X} .
+    protecting SUBST{Y} .
+
     sort =>{X,Y} .
 
     op __   : =>{X,Y} X$Elt -> Y$Elt [prec 40] .
@@ -102,16 +161,27 @@ fmod FUNCTION{X :: TRIV, Y :: TRIV} is
     var f : =>{X,Y} .
     var x : X$Elt .
     eq f $ x = f x .
+
+    op \_._ : Var{X} Y$Elt -> =>{X,Y} .
+    var X : Var{X} .
+    var Y : Y$Elt .
+    eq (\ X . Y) x = [X := x] Y .
 endfm
-)
 
-(
-view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
-    sort Elt to =>{X,Y} .
-endv
-)
+fmod TESTING is
+    protecting FUNCTION{Nat,Nat} .
+endfm
 
-(
+reduce [,x := 3] ,x .
+reduce [,x := 3] ,y .
+reduce [,x := ,y] ,y .
+reduce [,x := ,y] ,x .
+reduce [,x := 3] ,x + ,y .
+reduce (\ ,x . ,x) 3 .
+reduce (\ ,x . 2 * ,x) 3 .
+```
+
+```
 fmod FUNCTION-ID{X :: TRIV} is
     extending FUNCTION{X,X} .
 
@@ -119,6 +189,38 @@ fmod FUNCTION-ID{X :: TRIV} is
     var x : X$Elt .
     eq id x = x .
 endfm
+
+fmod FUNCTION-LAMBDA{X :: TRIV, Y :: TRIV} is
+    protecting META-LEVEL .
+    protecting FUNCTION{X,Y} .
+    protecting VARS{X} .
+
+    op __   : Subst{X} Y$Elt -> Y$Elt .
+    vars x  : Var{X} .
+    var X   : X$Elt .
+    var Y   : Y$Elt .
+    eq [x := X] Y = Y .
+
+    op \_._ : Var{X} Y$Elt -> =>{X,Y} .
+    eq (\ x . Y) X = [x := X] Y .
+endfm
+
+fmod FUNCTIONS{X :: TRIV, Y :: TRIV} is
+    protecting FUNCTION-LAMBDA{X,Y} .
+endfm
+
+fmod TESTING is
+    protecting FUNCTIONS{Nat,Nat} .
+endfm
+```
+
+```maude{exec:homod.maude}
+load full-maude27.maude .
+
+(
+view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
+    sort Elt to =>{X,Y} .
+endv
 )
 
 (
@@ -446,7 +548,7 @@ defined with a functional term (`even N`) inside an algebraic term (`not _`).
 This demonstrates how algebraic and higher-order functional definitions can be
 combined freely, leading to compact specifications.
 
-```maude{exec:homod.maude}
+```
 --- map over Maybe type
 --- -------------------
 (reduce map even Nothing .)
