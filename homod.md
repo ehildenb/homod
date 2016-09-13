@@ -211,8 +211,6 @@ higher-order functions.
 ```maude
 (
 fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
-    protecting FUNCTION{a, b} .
-    protecting FUNCTION{Maybe{a}, Maybe{b}} .
     extending FUNCTION{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
 
     op map : -> =>{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
@@ -226,8 +224,6 @@ endfm
 
 (
 fmod INSTANCE-MAPPABLE-CONS{a :: TRIV, b :: TRIV} is
-    protecting FUNCTION{a, b} .
-    protecting FUNCTION{Cons{a}, Cons{b}} .
     extending FUNCTION{=>{a,b}, =>{Cons{a},Cons{b}}} .
 
     op map : -> =>{=>{a,b}, =>{Cons{a},Cons{b}}} .
@@ -242,10 +238,6 @@ endfm
 
 (
 fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
-    protecting FUNCTION{a, b} .
-    protecting FUNCTION{b, =>{a,b}} .
-    protecting FUNCTION{Cons{a}, b} .
-    protecting FUNCTION{b, =>{Cons{a}, b}} .
     extending FUNCTION{=>{b, =>{a,b}}, =>{b, =>{Cons{a}, b}}} .
 
     op foldl : -> =>{=>{b,=>{a,b}}, =>{b, =>{Cons{a}, b}}} .
@@ -281,16 +273,16 @@ provided it for demonstration purposes.
 ```maude
 (
 fmod TESTING is
-    extending INSTANCE-MAPPABLE-MAYBE{Nat, Bool} .
     extending INSTANCE-MAPPABLE-CONS{Nat, Nat} .
     extending INSTANCE-MAPPABLE-CONS{Nat, Bool} .
-    extending INSTANCE-FOLDABLE-CONS{Bool, Bool} .
     extending INSTANCE-FOLDABLE-CONS{Nat, Nat} .
-    protecting FUNCTION-ID{Bool} .
+    extending INSTANCE-FOLDABLE-CONS{Bool, Bool} .
+    extending INSTANCE-MAPPABLE-MAYBE{Nat, Bool} .
     protecting FUNCTION-ID{Nat} .
-    protecting FUNCTION-COMP{Nat,Bool,Bool} .
-    protecting FUNCTION-COMP{Nat,Nat,Bool} .
+    protecting FUNCTION-ID{Bool} .
     protecting FUNCTION-COMP{Nat,Nat,Nat} .
+    protecting FUNCTION-COMP{Nat,Nat,Bool} .
+    protecting FUNCTION-COMP{Nat,Bool,Bool} .
     protecting FUNCTION-COMP{Cons{Nat},Cons{Nat},Cons{Bool}} .
 
     vars N M : Nat .
