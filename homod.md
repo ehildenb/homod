@@ -1,10 +1,7 @@
 ---
 author: Everett Hildenbrandt, Lucas Pena
 title: Generating Higher-order Maude from Haskell
-format: latex
 geometry: margin=2.7cm
-execute: homod.maude
-csl: ieee.csl
 ...
 
 
@@ -33,7 +30,7 @@ sort/type inference).
 Original Haskell
 ================
 
-```haskell{exec:haskell-orig.hs}
+```haskell
 module HaskTest where
 
 import Prelude hiding (Foldable, Maybe, map, Just, Nothing, foldl)
@@ -64,8 +61,6 @@ class Foldable f where
 instance Foldable Cons where
     foldl f b Nil = b
     foldl f b (a :| as) = foldl f (f b a) as
-
---endmodule
 ```
 
 Above is an example of two common Haskell algebraic datatypes; the `Maybe`
@@ -89,156 +84,27 @@ Maude Code
 Pre-Exists
 ----------
 
-```maude{exec:homod.maude}
-set include BOOL off .
-set include QID off .
-set include NAT off .
-
-fth EQ is
-    including TRIV .
-    protecting TRUTH-VALUE .
-    op _==_ : Elt Elt -> Bool .
-endfth
-
-fmod VAR{XV :: EQ, X :: TRIV} is
-    subsort XV$Elt < X$Elt .
-endfm
-
-fmod VAR-NAME is
-    protecting BOOL .
-    sort Var .
-    ops x y z : -> Var [ctor] .
-    op ,_ : Var -> Var [ctor] .
-endfm
-
-view Var from EQ to VAR-NAME is
-    sort Elt to Var .
-endv
-
-fmod SUBST{X :: TRIV} is
-    protecting META-LEVEL .
-    protecting VAR{Var,X} .
-
-    sort Subst{X} .
-    sort Var{X} .
-    subsort Var < Var{X} .
-
-    op [_:=_]   : Var{X} X$Elt -> Subst{X} .
-    op __       : Subst{X} X$Elt -> X$Elt .
-    op __       : Subst{X} GroundTermList -> GroundTermList .
-    op error    : -> X$Elt [ctor] .
-
-    var S       : Subst{X} .
-    vars x1 x2  : Var{X} .
-    var X       : X$Elt .
-    var GTS     : GroundTermList .
-    var GT GT'  : GroundTerm .
-    var Q       : Qid .
-
-    ceq [x1 := X] x2 = X    if x1 == x2 .
-    ceq [x1 := X] x2 = x2   if not x1 == x2 .
-
-    ceq S X = downTerm(GT, error)
-        if Q[GTS] := upTerm(X)
-        /\ GT := Q[S GTS] .
-    ceq S (GT , GTS) = S GT , S GTS if not GTS == empty .
-    ceq S GT = if X == error then GT else upTerm(S X) fi
-        if X := downTerm(GT, error) .
-    ceq S X = X if upTerm(X) :: Constant .
-
-
-endfm
-
+```maude
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
-    protecting SUBST{X} .
-    protecting SUBST{Y} .
-
     sort =>{X,Y} .
-
     op __   : =>{X,Y} X$Elt -> Y$Elt [prec 40] .
     op _$_  : =>{X,Y} X$Elt -> Y$Elt [prec 60] .
-
     var f : =>{X,Y} .
     var x : X$Elt .
     eq f $ x = f x .
-
-    op \_._ : Var{X} Y$Elt -> =>{X,Y} .
-    var X : Var{X} .
-    var Y : Y$Elt .
-    eq (\ X . Y) x = [X := x] Y .
 endfm
 
-fmod TESTING is
-    protecting FUNCTION{Nat,Nat} .
-endfm
-
-reduce [,x := 3] ,x .
-reduce [,x := 3] ,y .
-reduce [,x := ,y] ,y .
-reduce [,x := ,y] ,x .
-reduce [,x := 3] ,x + ,y .
-reduce (\ ,x . ,x) 3 .
-reduce (\ ,x . 2 * ,x) 3 .
-```
-
-```
 fmod FUNCTION-ID{X :: TRIV} is
-    extending FUNCTION{X,X} .
-
+    protecting FUNCTION{X,X} .
     op id : -> =>{X,X} .
     var x : X$Elt .
     eq id x = x .
 endfm
 
-fmod FUNCTION-LAMBDA{X :: TRIV, Y :: TRIV} is
-    protecting META-LEVEL .
-    protecting FUNCTION{X,Y} .
-    protecting VARS{X} .
-
-    op __   : Subst{X} Y$Elt -> Y$Elt .
-    vars x  : Var{X} .
-    var X   : X$Elt .
-    var Y   : Y$Elt .
-    eq [x := X] Y = Y .
-
-    op \_._ : Var{X} Y$Elt -> =>{X,Y} .
-    eq (\ x . Y) X = [x := X] Y .
-endfm
-
-fmod FUNCTIONS{X :: TRIV, Y :: TRIV} is
-    protecting FUNCTION-LAMBDA{X,Y} .
-endfm
-
-fmod TESTING is
-    protecting FUNCTIONS{Nat,Nat} .
-endfm
-```
-
-```maude{exec:homod.maude}
-load full-maude27.maude .
-
-(
-view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
-    sort Elt to =>{X,Y} .
-endv
-)
-
-(
-fmod FUNCTION-CONST{X :: TRIV, Y :: TRIV} is
-    extending FUNCTION{X,=>{Y,X}} .
-
-    op const : -> =>{X, =>{Y,X}} .
-    var x : X$Elt .
-    var y : Y$Elt .
-    eq const x y = x .
-endfm
-)
-
-(
 fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
-    extending FUNCTION{X,Y} .
-    extending FUNCTION{Y,Z} .
-    extending FUNCTION{X,Z} .
+    protecting FUNCTION{X,Y} .
+    protecting FUNCTION{Y,Z} .
+    protecting FUNCTION{X,Z} .
 
     op _._ : =>{Y,Z} =>{X,Y} -> =>{X,Z} [gather (E e) prec 44].
 
@@ -246,118 +112,6 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     var g : =>{Y,Z} .
     var x : X$Elt .
     eq (g . f) x = g (f x) .
-endfm
-)
-```
-
-```maude{exec:homod.maude}
-(
-fmod DATA-MAYBE{a :: TRIV} is
-    sort Maybe{a} .
-    op Nothing : -> Maybe{a} [ctor] .
-    op Just_ : a$Elt -> Maybe{a} [ctor] .
-endfm
-)
-
-(
-view Maybe{a :: TRIV} from TRIV to DATA-MAYBE{a} is
-    sort Elt to Maybe{a} .
-endv
-)
-
-(
-fmod DATA-CONS{a :: TRIV} is
-    sort Cons{a} .
-    op Nil : -> Cons{a} [ctor] .
-    op _:|_ : a$Elt Cons{a} -> Cons{a} [ctor] .
-endfm
-)
-
-(
-view Cons{a :: TRIV} from TRIV to DATA-CONS{a} is
-    sort Elt to Cons{a} .
-endv
-)
-```
-
-```maude
-fmod COMBINATOR-I{X :: TRIV} is
-    extending FUNCTION{X,X} .
-
-    op I : -> =>{X,X} [ctor] .
-
-    var x : X$Elt .
-    eq I x = x .
-endfm
-
-fmod COMBINATOR-K{X :: TRIV, Y :: TRIV} is
-    extending FUNCTION{X,Y} .
-
-    op K : -> =>{X, =>{Y,X}} .
-
-    var x : X$Elt .
-    var y : Y$Elt .
-    eq K x y = x .
-endfm
-
-fmod COMBINATOR-S{A :: TRIV, B :: TRIV, C :: TRIV} is
-    extending FUNCTION{=>{A,=>{B,C}}, =>{=>{A,B}, =>{A,C}}} .
-
-    op S : -> =>{=>{A,=>{B,C}}, =>{=>{A,B}, =>{A,C}}} .
-
-    var x : X$Elt .
-    var y : Y$Elt .
-    var z : Z$Elt .
-    eq S x y z = x y (y z) .
-endfm
-```
-
-
-```maude{exec:lambda-abstraction.maude}
-load maude-gen.maude .
-
-fmod LAMBDA-FUNCTION{X :: TRIV, Y :: TRIV} is
-    protecting FUNCTION{X,Y} .
-
-    sorts V{X} T{X} Subst{X} .
-    subsorts V{X} X$Elt < T{X} .
-    sort T{Y} .
-    subsort Y$Elt < T{Y} .
-
-    op \_->_ : V{X} T{Y} -> =>{X,Y} .
-    op _:=_ : V{X} T{X} -> Subst{X} .
-    op [_]_ : Subst{X} T{X} -> T{X} .
-    op [_]_ : Subst{X} T{Y} -> T{Y} .
-    op [_]_ : Subst{X} =>{X,Y} -> =>{X,Y} .
-
-    vars X1 X2 : V{X} . vars x1 x2 : T{X} .
-    vars Y1 Y2 : T{Y} .
-    var x' : X$Elt . var y' : Y$Elt .
-    var f : =>{X,Y} .
-
-    eq (\ X1 -> Y1) x1 = [X1 := x1] Y1 .
-
-    eq [X1 := x1] x' = x' .
-    eq [X1 := x1] y' = y' .
-
-    ceq [X1 := x1] X2 = x1 if X1 == X2 .
-    ceq [X1 := x1] X2 = X2 if not X1 == X2 .
-
-    ceq [X1 := x1] (\ X2 -> Y1) = \ X2 -> Y1              if X1 == X2 .
-    ceq [X1 := x1] (\ X2 -> Y1) = \ X2 -> ([X1 := x1] Y1) if not X1 == X2 .
-
-    eq [X1 := x1] (f x2) = ([X1 := x1] f) ([X1 := x1] x2) .
-    eq [X1 := x1] f = f [owise] .
-
-endfm
-
-
-fmod TESTING is
-    protecting LAMBDA-FUNCTION{Int,Bool} .
-    op x : -> V{Int} .
-    op +3 : -> =>{Int,Int} .
-    var N : Int .
-    eq +3 N = N + 3 .
 endfm
 ```
 
@@ -387,6 +141,20 @@ We would like to generate the following code given the specification above.
 
 ### Core Maude
 
+```maude
+fmod DATA-MAYBE{a :: TRIV} is
+    sort Maybe{a} .
+    op Nothing : -> Maybe{a} [ctor] .
+    op Just_ : a$Elt -> Maybe{a} [ctor] .
+endfm
+
+fmod DATA-CONS{a :: TRIV} is
+    sort Cons{a} .
+    op Nil : -> Cons{a} [ctor] .
+    op _:|_ : a$Elt Cons{a} -> Cons{a} [ctor] .
+endfm
+```
+
 Because Haskell data-types are just Algebraic Data Types (ADTs), their
 representation in Maude is nearly identical to that in Haskell. Maude has many
 fewer restrictions on the allowed syntax for defining ADTs; for instance we had
@@ -403,6 +171,28 @@ not immediately present in Haskell.
 
 ### Full Maude
 
+```maude
+load full-maude27.maude .
+
+(
+view Maybe{a :: TRIV} from TRIV to DATA-MAYBE{a} is
+    sort Elt to Maybe{a} .
+endv
+)
+
+(
+view Cons{a :: TRIV} from TRIV to DATA-CONS{a} is
+    sort Elt to Cons{a} .
+endv
+)
+
+(
+view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
+    sort Elt to =>{X,Y} .
+endv
+)
+```
+
 To actually get usable datatypes and functions, we must instantiate the Maude
 modules above with the corresponding `TRIV` theories. Here, we provide some
 parameterized views (supported by Full Maude) which make this process easier. To
@@ -418,9 +208,11 @@ data-constructors for `Maybe` and `Cons`. We've also added `=>{X,Y}` as a
 base-type here too, meaning we can build multi-argument functions and
 higher-order functions.
 
-```maude{exec:homod.maude}
+```maude
 (
 fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
+    protecting FUNCTION{a, b} .
+    protecting FUNCTION{Maybe{a}, Maybe{b}} .
     extending FUNCTION{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
 
     op map : -> =>{=>{a,b}, =>{Maybe{a},Maybe{b}}} .
@@ -434,6 +226,8 @@ endfm
 
 (
 fmod INSTANCE-MAPPABLE-CONS{a :: TRIV, b :: TRIV} is
+    protecting FUNCTION{a, b} .
+    protecting FUNCTION{Cons{a}, Cons{b}} .
     extending FUNCTION{=>{a,b}, =>{Cons{a},Cons{b}}} .
 
     op map : -> =>{=>{a,b}, =>{Cons{a},Cons{b}}} .
@@ -448,6 +242,10 @@ endfm
 
 (
 fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
+    protecting FUNCTION{a, b} .
+    protecting FUNCTION{b, =>{a,b}} .
+    protecting FUNCTION{Cons{a}, b} .
+    protecting FUNCTION{b, =>{Cons{a}, b}} .
     extending FUNCTION{=>{b, =>{a,b}}, =>{b, =>{Cons{a}, b}}} .
 
     op foldl : -> =>{=>{b,=>{a,b}}, =>{b, =>{Cons{a}, b}}} .
@@ -480,7 +278,7 @@ Testing
 Here is an example module which would use this higher-order functionality. We've
 provided it for demonstration purposes.
 
-```maude{exec:homod.maude}
+```maude
 (
 fmod TESTING is
     extending INSTANCE-MAPPABLE-MAYBE{Nat, Bool} .
@@ -548,7 +346,7 @@ defined with a functional term (`even N`) inside an algebraic term (`not _`).
 This demonstrates how algebraic and higher-order functional definitions can be
 combined freely, leading to compact specifications.
 
-```
+```maude
 --- map over Maybe type
 --- -------------------
 (reduce map even Nothing .)
@@ -600,13 +398,13 @@ and Maude's sort checker is able to infer when it is the identity function over
 
 The next example is another basic use of `map` over a list, though note the
 function used is `(+ 3)`. Here, with no additional work, Maude gives us partial
-application. Unfortunately, a partial function like `map even` can be
+application. Unfortunately, a partially applied function like `map even` can be
 `=>{Maybe{Nat},Maybe{Bool}}` or `=>{Cons{Nat},Cons{Bool}}`, so currently we are
-unable to infer a generic sort for such partial functions without additional
-information. The last example shows function composition along with partial
-application, as well as another use of the `$` precedence operator.  Here, since
-a list is used, Maude is able to infer the correct sort for the partially
-applied functions `map even`, `map (+ 3)`, and their composition.
+unable to infer a generic sort for such partially applied functions without
+additional information. The last example shows function composition along with
+partial application, as well as another use of the `$` precedence operator.
+Here, since a list is used, Maude is able to infer the correct sort for the
+partially applied functions `map even`, `map (+ 3)`, and their composition.
 
 
 Future Work
@@ -634,16 +432,17 @@ Finally, we could add support for more general sort inference when using partial
 application. With this, `map even` could initially be inferred with a more
 general sort such as `=>{f{a}, f{b}}`, then when instantiated with a list could
 be converted to the sort `=>{Cons{a}, Cons{b}}`. Currently, as previously
-mentioned, Maude's parser will not accept `map even` or similar partial
-functions if the sort is ambiguous (as the two sorts it would infer for `Cons`
-and `Maybe` are in disconnected components). This would enable "true typeclass"
-support, as Haskell has.
+mentioned, Maude's parser will not accept `map even` or similar partially
+applied functions if the sort is ambiguous (as the two sorts it would infer for
+`Cons` and `Maybe` are in disconnected components). This would enable "true
+typeclass" support, as Haskell has.
 
 
 References
 ==========
 
 ---
+csl: ieee.csl
 references:
 -   id: tannen
     author:
