@@ -1,4 +1,3 @@
-
 Sort Modules
 ============
 
@@ -14,79 +13,88 @@ edges in the sort POSET). This module provides functionality for taking a Maude
 module and getting the connected components of the module in a non-flat way.
 
 ```maude
-fmod SORT-CONNECTED-COMPONENTS is
-    extending META-MODULE .
+fmod SORT-POSETS is
+    protecting QID * (sort Qid to Sort) .
     protecting BOOL .
 
-    sorts SortPoset SortPosets .
-    subsorts SortSet < SortPoset .
+    sorts SortSet NeSortSet .
+    subsort Sort < NeSortSet < SortSet .
+    sorts NeSortPoset SortPoset .
+    subsorts NeSortSet < NeSortPoset < SortPoset .
+    subsort SortSet < SortPoset .
+    sorts NeSortPosets SortPosets .
+    subsort NeSortPosets < SortPosets .
 
-    vars X X' X'' : Sort . vars XS XS' : SortSet . vars XPS XPS' : SortPoset .
+    vars X X' X'' : Sort .
+    vars XS XS' : SortSet . vars NXS NXS' : NeSortSet .
+    vars XPS XPS' : SortPoset . vars NXPS NXPS' : NeSortPoset .
+    var XPSS : SortPosets . vars NXPSS NXPSS' : NeSortPosets .
+
+    op none : -> SortSet [ctor] .
+    op _;_ : SortSet SortSet -> SortSet [ctor assoc comm id: none] .
+    op _;_ : NeSortSet SortSet -> NeSortSet [ctor assoc comm id: none] .
+    --------------------------------------------------------------------
+    eq X ; X = X .
 
     op _;_ : SortPoset SortPoset -> SortPoset [ctor ditto] .
-    op _>[_] : Sort SortSet -> SortPoset [ctor right id: none prec 40] .
-    --------------------------------------------------------------------
+    op _;_ : NeSortPoset SortPoset -> NeSortPoset [ctor ditto] .
+    op _>[_] : Sort SortSet -> NeSortPoset [ctor right id: none prec 40] .
+    ----------------------------------------------------------------------
     eq X > [XS] ; X > [XS'] = X > [XS ; XS'] .
 
+    op _in_ : Sort SortPoset -> Bool .
+    ----------------------------------
+    eq X in (X > [XS] ; XPS) = true .
+    eq X in (X' > [X ; XS'] ; XPS) = true .
+    eq X in XPS = false [owise] .
+
     op {_} : SortPoset -> SortPosets [ctor] .
-    op _ in _ : SortSet SortPosets -> Bool .
-    ----------------------------------------
-    eq X in { X > [XS] ; XPS } = true .
-    eq X in { X' > [X ; XS'] ; XPS } = true .
-    eq X in { XPS } = false [owise] .
-    eq (X ; XS) in { XPS } = X in { XPS } and XS in { XPS } .
-    ceq { X > [X' ; XS] ; XPS } = { X > [X' ; XS] ; X' ; XPS }
-        if not (X == X') /\ not (X' in XPS) .
+    op {_} : NeSortPoset -> NeSortPosets [ctor] .
+    ---------------------------------------------
+    ceq { X > [X' ; XS] ; XPS } = { X > [X' ; XS] ; X' ; XPS } if X =/= X' /\ not (X' in XPS) .
 
     op .SortPosets : -> SortPosets [ctor] .
-    op _;_ : SortPosets SortPosets -> SortPosets [ctor assoc comm id: .SortPosets prec 60] .
-    ----------------------------------------------------------------------------------------
+    op _;_ : SortPosets SortPosets -> SortPosets [ctor assoc comm id: .SortPosets prec 60 format(d n s d)] .
+    op _;_ : NeSortPosets SortPosets -> NeSortPosets [ctor assoc comm id: .SortPosets prec 60 format(d n s d)] .
+    ------------------------------------------------------------------------------------------------------------
     eq { none } = .SortPosets .
     eq { X > [XS] ; XPS } ; { X > [XS'] ; XPS' } = { X > [XS ; XS'] ; XPS ; XPS' } .
+
+    op _[_] : SortPosets Sort -> SortPoset .
+    ----------------------------------------
+    eq ({ X > [XS] ; XPS } ; XPSS)[X] = X > [XS] ; XPS .
+    eq XPSS[X] = none [owise] .
+
+---    op sortPosets : Module -> SortPosets .
+---    op sortPosets : SortSet SubsortDeclSet -> SortPosets .
+---    ------------------------------------------------------
+---    eq sortPosets( M ) = sortPosets(getSorts(M), getSubsorts(M)) .
+---    eq sortPosets( none , none ) = .SortPosets .
+---    eq sortPosets( X ; XS , SS ) = {X} ; sortPosets(XS , SS) .
+---    eq sortPosets( XS , subsort X' < X . SS ) = {X > [X']} ; sortPosets(XS, SS) .
+
+    op sortSet : SortPoset -> SortSet .
+    op sortSet : SortPosets -> SortSet .
+    ------------------------------------
+    eq sortSet( none ) = none .
+    eq sortSet( X > [XS] ) = X ; XS .
+    eq sortSet( NXPS ; NXPS' ) = sortSet(NXPS) ; sortSet(NXPS') .
+    eq sortSet( .SortPosets ) = none .
+    eq sortSet( { NXPS } ) = sortSet(NXPS) .
+    eq sortSet( NXPSS ; NXPSS' ) = sortSet(NXPSS) ; sortSet(NXPSS') .
+
+---    op subsortSet : SortPoset -> SubsortDeclSet .
+---    op subsortSet : SortPosets -> SubsortDeclSet .
+---    ----------------------------------------------
+---    eq subsortSet( none ) = none .
+---    eq subsortSet( X ) = none .
+---    eq subsortSet( X > [X' ; XS] ) = subsort X' < X . subsortSet(X > [XS]) .
+---    eq subsortSet( NXPS ; NXPS' ) = subsortSet(NXPS) subsortSet(NXPS') .
+---    eq subsortSet( .SortPosets ) = none .
+---    eq subsortSet( { NXPS } ) = subsortSet(NXPS) .
+---    eq subsortSet( NXPSS ; NXPSS' ) = subsortSet(NXPSS) subsortSet(NXPSS') .
 endfm
 ```
-
-
-    op {_} : SortPosets -> SortCC [ctor prec 52 format(n s+i n-i d)] .
-    op .SortCCs : -> SortCCs [ctor] .
-    op _;_ : SortCCs SortCCs -> SortCCs [ctor assoc comm id: .SortCCs prec 60] .
-    ----------------------------------------------------------------------------
-    eq { .SortPosets } = .SortCCs .
-    eq { X > [XS] ; XPSS } ; { X > [XS'] ; YPSS } = { X > [XS ; XS'] ; XPSS ; YPSS } .
-
-    op sortCCs : SortSet -> SortCCs .
-    ---------------------------------
-    eq sortCCs( none ) = .SortCCs .
-    eq sortCCs( X ; XS ) = { X > [ none ] } ; sortCCs(XS) .
-
-    op subsortCCs : SubsortDeclSet -> SortCCs .
-    -------------------------------------------
-    eq subsortCCs( none ) = .SortCCs .
-    eq subsortCCs( subsort X < Y . SS ) = { Y > [X] } ; subsortCCs(SS) .
-
-    op subsorts : Sort SortPosets -> SortSet .
-    ------------------------------------------
-    eq subsorts( X , X > [XS] ; XPSS ) = XS ; subsorts(X, XPSS) .
-    eq subsorts( X , XPSS ) = none [owise] .
-
-    op sortConnectedComponents : Module -> SortCCs .
-    ------------------------------------------------
-    eq sortConnectedComponents(M) = sortCCs(getSorts(M)) ; subsortCCs(getSubsorts(M)) .
-
-    op asSortSet : SortCCs -> SortSet .
-    -----------------------------------
-    eq asSortSet( .SortCCs ) = none .
-    eq asSortSet( { X > [XS] ; XPSS } ; SCCS ) = X ; XS ; asSortSet({XPSS} ; SCCS) .
-
-    op asSubsortDeclSet : SortCCs -> SubsortDeclSet .
-    -------------------------------------------------
-    eq asSubsortDeclSet( .SortCCs  ) = none .
-    eq asSubsortDeclSet( { X > [ none ] ; XPSS } ; SCCS )
-     = asSubsortDeclSet( {                XPSS } ; SCCS ) .
-    eq asSubsortDeclSet( { X > [ X' ; XS ] ; XPSS } ; SCCS )
-     = asSubsortDeclSet( { X > [      XS ] ; XPSS } ; SCCS ) subsort X' < X . .
-endfm
-
 
 Constructions
 =============
@@ -97,89 +105,96 @@ Cartesian Product
 We would like to take the cartesian product of two connected components. This
 does that by taking the cartesian product of the posets.
 
-```
+```maude
 fmod SORT-CARTESIAN-PRODUCT is
-    extending SORT-CONNECTED-COMPONENTS .
+    extending SORT-POSETS .
 
-    vars X Y : Sort . vars XS XS' YS YS' ZS : SortSet .
-    vars PXS PYS : SortPosets . var SCCS : SortCCs .
-    vars XPS YPS : SortPoset . vars XPSS YPSS : SortPosets .
+    vars X X' : Sort .
+    vars XS XS' : SortSet . vars NXS NXS' NYS NYS' : NeSortSet .
+    vars XPS XPS' : SortPoset . vars NXPS NXPS' NYPS NYPS' : NeSortPoset .
+    vars XPSS XPSS' : SortPosets . vars NXPSS NXPSS' NYPSS NYPSS' : NeSortPosets .
 
-    op _ × _ : Sort Sort -> Sort [ctor assoc prec 30] .
-    op _ × _ : Sort SortSet -> SortSet .
-    op _ × _ : SortSet Sort -> SortSet .
-    op _ × _ : SortSet SortSet -> SortSet .
-    -------------------------------------------
-    eq none × YS = none .
-    eq XS × none = none .
-    eq (X ; XS) × YS = X × YS ; XS × YS .
-    eq XS × (Y ; YS) = XS × Y ; XS × YS .
-    eq (X ; XS) × Y = X × Y ; XS × Y .
-
----    op {_|_|_} : SortPosets SortSet SortPosets -> SortCCs .
----    -------------------------------------------------------
----    eq { PXS | none | PYS } = .SortCCs .
----    ceq { PXS | X × Y ; ZS | PYS }
----      = { { X ; XS } × { Y ; YS } | (X × Y) > [ X × { YS } ; { XS } × Y ] } { PXS | ZS | PYS }
----        if XS := subsorts(X, PXS)
----        /\ YS := subsorts(Y, PYS) .
-
-    op _[_] : SortCCs Sort -> SortCC .
-    ----------------------------------
-    eq ({ X > [XS] ; XPSS } ; SCCS)[X] = { X > [XS] ; XPSS } .
-
-    op _ × _ : SortPoset SortPoset -> SortPoset .
-    op _ × _ : SortPosets SortPoset -> SortPosets .
-    op _ × _ : SortPoset SortPosets -> SortPosets .
-    op _ × _ : SortPosets SortPosets -> SortPosets .
-    ------------------------------------------------
-    eq X > [XS] × Y > [YS] = (X × Y) > [XS × Y ; X × YS] .
-    eq (XPS ; XPSS) × YPSS = (XPS × YPSS) ; (XPSS × YPSS) .
-    eq .SortPosets × YPS = .SortPosets .
-    eq XPS × .SortPosets = .SortPosets .
-    eq { XPS ; XPSS } × YPS = XPS × YPS ; {XPSS} × YPS .
-    eq XPS × { YPS ; YPSS }  = XPS × YPS ; XPS × {YPSS} .
-
-    op _ × _ : SortCC SortCC -> SortCC .
-    op _ × _ : SortCC SortPoset -> SortCC .
-    op _ × _ : SortPoset SortCC -> SortCC .
-    op _ × _ : SortPoset SortPoset -> SortPoset .
-    ---------------------------------------------
+    op _×_ : Sort Sort -> Sort [ctor assoc prec 30] .
+    -------------------------------------------------
+    op cross : SortSet SortSet -> SortSet [assoc] .
+    op cross : SortPoset SortPoset -> SortPoset [assoc] .
+    op cross : SortPosets SortPosets -> SortPosets [assoc] .
+    --------------------------------------------------------
+    eq cross(NXS, none)          = none .
+    eq cross(none, NXS')         = none .
+    eq cross(NXPS, none)         = none .
+    eq cross(none, NXPS')        = none .
+    eq cross(XPSS, .SortPosets)  = .SortPosets .
+    eq cross(.SortPosets, XPSS') = .SortPosets .
+    --------------------------------------------
+    eq cross(NXS ; NXS', NYS)       = cross(NXS, NYS) ; cross(NXS', NYS) .
+    eq cross(NXS, NYS ; NYS')       = cross(NXS, NYS) ; cross(NXS, NYS') .
+    eq cross(NXPS ; NXPS', NYPS)    = cross(NXPS, NYPS) ; cross(NXPS', NYPS) .
+    eq cross(NXPS, NYPS ; NYPS')    = cross(NXPS, NYPS) ; cross(NXPS, NYPS') .
+    eq cross(NXPSS ; NXPSS', NYPSS) = cross(NXPSS, NYPSS) ; cross(NXPSS', NYPSS) .
+    eq cross(NXPSS, NYPSS ; NYPSS') = cross(NXPSS, NYPSS) ; cross(NXPSS, NYPSS') .
+    ------------------------------------------------------------------------------
+    eq cross(X > [XS], X' > [XS']) = (X × X') > [cross(X, XS') ; cross(XS, X')] .
+    eq cross({XPS}, {XPS'}) = {cross(XPS, XPS')} .
 endfm
 ```
 
+Direct Sum
+----------
 
-```
+```maude
 fmod TESTING is
     protecting SORT-CARTESIAN-PRODUCT .
 
-    op initSubSorts : -> SubsortDeclSet .
-    eq initSubSorts = ( subsort 'Int < 'Rat .
-                        subsort 'Nat < 'Int .
-                        subsort 'Pos < 'Nat .
-                        subsort 'Neg < 'Int .
-                        subsort 'Char < 'String .
-                        subsort 'String < 'StringSet .
-                        subsort 'String < 'StringList .
-                      ) .
+    op sorts1 : -> SortPosets .
+    ---------------------------
+    eq sorts1 =   { 'String > ['Char] }
+                ; { 'Rat > ['Int] ; 'Int > ['Nat ; 'Neg] ; 'Nat > ['Pos ; 'Zero] }
+                .
 
-    op initSorts : -> SortSet .
-    eq initSorts = ( 'Int ; 'Rat ; 'MySort1 ; 'MySort2 ) .
-
-    var TS : SortCCs .
-
-    op triangle1 : -> SortCC .
-    op triangle2 : -> SortCC .
-    op triangle1×triangle2 : -> SortCC .
-    --------------------------------------
-    eq triangle1 = subsortCCs( subsort 'B < 'A . subsort 'C < 'A . ) .
-    eq triangle2 = subsortCCs( subsort 'E < 'D . subsort 'F < 'D . ) .
-    ceq triangle1×triangle2 = TS['A] × TS['C]
-        if TS := {triangle1 ; triangle2} .
 endfm
 
-reduce triangle1 .
-reduce triangle2 .
-reduce triangle1 .
+fmod DATA-MODULE is
+    --- extending META-MODULE .
+    extending SORT-POSETS .
 
+    sort DataExp DataModule DataModules .
+    subsort DataModule < DataModules .
+    subsort String < DataExp < Sort .
+
+    op co     : Sort -> DataExp .
+    op contra : Sort -> DataExp .
+    op __ : DataExp DataExp -> DataExp [assoc prec 33] .
+
+    op data_is_enddata : DataExp SortPosets -> DataModule [ctor format (n d s n++i n--i d)] .
+
+    op none : -> DataModules [ctor] .
+    op __ : DataModules DataModules -> DataModules
+            [ctor assoc comm id: none prec 90 format(n n n)] .
+
+endfm
+```
+
+Sort Modules
+============
+
+```maude
+
+reduce "List{" co('S) "}" .
+
+reduce
+
+data "List{" co('S) "}" is
+    { "List{" co('S) "}" > [co('S)]
+    }
+enddata
+
+data contra('X) "=>" co('Y) is
+    { none
+    }
+enddata
+
+.
+
+q
 ```
