@@ -157,7 +157,8 @@ prelude), what we want is the following flattened module:
 ```maude
 fmod MY-MOD-2 is
   protecting NUMBERS .
- 
+  
+  --- for all sorts `A`, we want sorts `NeSet{A}` and `Set{A}`
   sorts NeSet{Zero}    Set{Zero}
         NeSet{NzNat}   Set{NzNat}
         NeSet{Nat}     Set{Nat}
@@ -167,16 +168,7 @@ fmod MY-MOD-2 is
         NeSet{NzRat}   Set{NzRat}
         NeSet{Rat}     Set{Rat} .
 
-  subsorts Set{Zero} Set{NzNat} < Set{Nat}  .
-  subsorts Set{NzNat} < Set{NzInt} Set{Nat} < Set{Int} .
-  subsorts Set{NzInt} < Set{NzRat} Set{Int} < Set{Rat} .
-  subsorts Set{NzNat} < Set{PosRat} < Set{NzRat}       .
-
-  subsort NeSet{Zero} NeSet{NzNat} < NeSet{Nat}                .
-  subsorts NeSet{NzNat} < NeSet{NzInt} NeSet{Nat} < NeSet{Int} .
-  subsorts NeSet{NzInt} < NeSet{NzRat} NeSet{Int} < NeSet{Rat} .
-  subsorts NeSet{NzNat} < NeSet{PosRat} < NeSet{NzRat}         .
-
+  --- for all sorts `A`, we want subsorts `A < NeSet{A} < Set{A}`
   subsort Zero   < NeSet{Zero}   < Set{Zero}   .
   subsort NzNat  < NeSet{NzNat}  < Set{NzNat}  .
   subsort Nat    < NeSet{Nat}    < Set{Nat}    .
@@ -186,6 +178,19 @@ fmod MY-MOD-2 is
   subsort NzRat  < NeSet{NzRat}  < Set{NzRat}  .
   subsort Rat    < NeSet{Rat}    < Set{Rat}    .
 
+  --- for all subsorts `A < B`, we want subsorts `Set{A} < Set{B}`
+  subsorts Set{Zero} Set{NzNat} < Set{Nat}  .
+  subsorts Set{NzNat} < Set{NzInt} Set{Nat} < Set{Int} .
+  subsorts Set{NzInt} < Set{NzRat} Set{Int} < Set{Rat} .
+  subsorts Set{NzNat} < Set{PosRat} < Set{NzRat}       .
+
+  --- for all subsorts `A < B`, we want subsorts `NeSet{A} < NeSet{B}`
+  subsort NeSet{Zero} NeSet{NzNat} < NeSet{Nat}                .
+  subsorts NeSet{NzNat} < NeSet{NzInt} NeSet{Nat} < NeSet{Int} .
+  subsorts NeSet{NzInt} < NeSet{NzRat} NeSet{Int} < NeSet{Rat} .
+  subsorts NeSet{NzNat} < NeSet{PosRat} < NeSet{NzRat}         .
+
+  --- for all sorts `A`, we want operator `mt : -> Set{A}`
   op mt : -> Set{Zero}   [ctor] .
   op mt : -> Set{NzNat}  [ctor] .
   op mt : -> Set{Nat}    [ctor] .
@@ -195,6 +200,7 @@ fmod MY-MOD-2 is
   op mt : -> Set{NzRat}  [ctor] .
   op mt : -> Set{Rat}    [ctor] .
 
+  --- for all sorts `A`, we want operator `_,_ : Set{A} Set{A} -> Set{A}`
   op _,_ : Set{Zero}   Set{Zero}   -> Set{Zero}   [ctor assoc comm id: mt prec 99] .
   op _,_ : Set{NzNat}  Set{NzNat}  -> Set{NzNat}  [ctor assoc comm id: mt prec 99] .
   op _,_ : Set{Nat}    Set{Nat}    -> Set{Nat}    [ctor assoc comm id: mt prec 99] .
@@ -204,6 +210,7 @@ fmod MY-MOD-2 is
   op _,_ : Set{NzRat}  Set{NzRat}  -> Set{NzRat}  [ctor assoc comm id: mt prec 99] .
   op _,_ : Set{Rat}    Set{Rat}    -> Set{Rat}    [ctor assoc comm id: mt prec 99] .
 
+  --- for all sorts `A`, we want operator `_,_ : NeSet{A} Set{A} -> NeSet{A}`
   op _,_ : NeSet{Zero}   Set{Zero}   -> NeSet{Zero}   [ctor ditto] .
   op _,_ : NeSet{NzNat}  Set{NzNat}  -> NeSet{NzNat}  [ctor ditto] .
   op _,_ : NeSet{Nat}    Set{Nat}    -> NeSet{Nat}    [ctor ditto] .
@@ -213,6 +220,7 @@ fmod MY-MOD-2 is
   op _,_ : NeSet{NzRat}  Set{NzRat}  -> NeSet{NzRat}  [ctor ditto] .
   op _,_ : NeSet{Rat}    Set{Rat}    -> NeSet{Rat}    [ctor ditto] .
 
+  --- for all sorts `A` (and a variable `NA : A`) we want the equation `NA , NA = NA`
   var NeZero   : NeSet{Zero}   .
   var NeNzNat  : NeSet{NzNat}  .
   var NeNat    : NeSet{Nat}    .
@@ -303,7 +311,7 @@ univ FUNCTION
     var a : $A .
     eq id a = a .
     
-  --- lambda abstraction
+  --- (beginnings of) lambda abstraction
   forall:
     sorts A B .
     op f : A -> B .
@@ -324,8 +332,11 @@ univ FUNCTION
     sorts A B C .
   exists:
     op _._ : $B=>$C $A=>$B -> $A=>$C .
+
     var f : $B=>$C . var g : $A=>$B . var A : $A .
-    eq id . g = g . eq f . id = f .
+
+    eq id . g = g .
+    eq f . id = f .
     eq (f . g) A = f(g(A)) .
 
 enduniv
