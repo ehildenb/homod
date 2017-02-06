@@ -14,27 +14,27 @@ module and getting the connected components of the module in a non-flat way.
 
 ```maude
 fmod SORT-POSETS is
-    protecting QID * (sort Qid to Sort) .
-    protecting BOOL .
+    extending META-MODULE .
 
-    sorts SortSet NeSortSet .
-    subsort Sort < NeSortSet < SortSet .
+    --- sorts SortSet NeSortSet .
+    --- subsort Sort < NeSortSet < SortSet .
     sorts NeSortPoset SortPoset .
     subsorts NeSortSet < NeSortPoset < SortPoset .
     subsort SortSet < SortPoset .
     sorts NeSortPosets SortPosets .
     subsort NeSortPosets < SortPosets .
 
+
     vars X X' X'' : Sort .
     vars XS XS' : SortSet . vars NXS NXS' : NeSortSet .
     vars XPS XPS' : SortPoset . vars NXPS NXPS' : NeSortPoset .
     var XPSS : SortPosets . vars NXPSS NXPSS' : NeSortPosets .
 
-    op none : -> SortSet [ctor] .
-    op _;_ : SortSet SortSet -> SortSet [ctor assoc comm id: none] .
-    op _;_ : NeSortSet SortSet -> NeSortSet [ctor assoc comm id: none] .
-    --------------------------------------------------------------------
-    eq X ; X = X .
+---    op none : -> SortSet [ctor] .
+---    op _;_ : SortSet SortSet -> SortSet [ctor assoc comm id: none] .
+---    op _;_ : NeSortSet SortSet -> NeSortSet [ctor assoc comm id: none] .
+---    --------------------------------------------------------------------
+---    eq X ; X = X .
 
     op _;_ : SortPoset SortPoset -> SortPoset [ctor ditto] .
     op _;_ : NeSortPoset SortPoset -> NeSortPoset [ctor ditto] .
@@ -155,23 +155,37 @@ fmod TESTING is
 endfm
 
 fmod DATA-MODULE is
-    --- extending META-MODULE .
     extending SORT-POSETS .
 
-    sort DataExp DataModule DataModules .
-    subsort DataModule < DataModules .
-    subsort String < DataExp < Sort .
+    sorts PreSort Variance SortExp .
+    subsort String < PreSort .
 
-    op co     : Sort -> DataExp .
-    op contra : Sort -> DataExp .
-    op __ : DataExp DataExp -> DataExp [assoc prec 33] .
+    sort DataModule DataModules DataQuery Definition .
+    subsort DataModule < DataModules < Definition .
 
-    op data_is_enddata : DataExp SortPosets -> DataModule [ctor format (n d s n++i n--i d)] .
+    ops Co Contra : -> Variance [ctor] .
+    op __ : Variance Variance -> Variance [ctor assoc] .
+
+    op sv : Qid -> PreSort [ctor] .
+    op __  : PreSort PreSort -> PreSort [ctor assoc prec 33] .
+    op <_> : PreSort -> Sort [ctor] .
+    op _:_ : PreSort Variance -> SortExp [ctor] .
+
+    op data_is_enddata : SortExp SortPosets -> DataModule [ctor format (n d s n++i n--i d)] .
 
     op none : -> DataModules [ctor] .
     op __ : DataModules DataModules -> DataModules
             [ctor assoc comm id: none prec 90 format(n n n)] .
 
+---    op _@_ : Sort SortPosets -> Sort .
+---    op _@_|_ : Sort SortPosets SortPosets -> Sort .
+---
+---    op __ : DataModules Sort -> Definition [ctor prec 99] .
+---
+---    var S : Sort . vars SP SP' : SortPosets . var DMS : DataModules .
+---    eq (DMS data S is sorts S' . SP' enddata) (S @ SP)
+---     = data S        is SP' enddata
+---       data (S @ SP) is SP' enddata .
 endfm
 ```
 
@@ -180,18 +194,21 @@ Sort Modules
 
 ```maude
 
-reduce "List{" co('S) "}" .
+reduce < "List{" sv('S) "}" > .
 
 reduce
 
-data "List{" co('S) "}" is
-    { "List{" co('S) "}" > [co('S)]
+data "List{" sv('S) "}" : Co is
+    { < "List{" sv('S) "}" > > [< sv('S) >]
     }
 enddata
 
-data contra('X) "=>" co('Y) is
-    { none
-    }
+data sv('X) "=>" sv('Y) : Contra Co is
+    .SortPosets
+enddata
+
+data sv('X) "×" sv('Y) : Co Co is
+    .SortPosets
 enddata
 
 .
