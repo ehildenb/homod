@@ -260,16 +260,28 @@ univ SET
 
     var NA : NeSet{$A} .
     eq NA , NA = NA .
-
+   
   forall:
     sorts A B .
     subsort A < B .
   exists:
     subsort NeSet{$A} < NeSet{$B} .
-    subsort Set{$Bot} < Set{$A} < Set{$B}   .
+    subsorts Set{$Bot} < Set{$A} < Set{$B} .
 
+  --- alternative to MAPPABLE-SET (below)
+  --- lift each operator on sort A to work on sort Set{A}
+  forall:
+    sorts A B .
+    op f : A -> B .
+  exists:
+    op $f : Set{A} -> Set{B} .
+    
+    var A : $A . vars NA NA' : NeSet{$A} .
+    eq $f(mt)       = mt               .
+    eq $f(A)        = f(A)             .
+    eq $f(NA , NA') = $f(NA) , $f(NA') .
 enduniv
-'''
+```
 
 Functions
 ---------
@@ -282,6 +294,16 @@ univ FUNCTION
   exists:
     sort $A=>$B .
     op __ : $A=>$B $A -> [$B] .
+    
+  --- lambda abstraction
+  forall:
+    sorts A B .
+    op f : A -> B .
+  exists:
+    sort Var{$A} .
+    op $f : Var{$A} -> $A=>$B .
+    var A : $A .
+    eq $f A = f(A) .
 
   forall:
     sorts A B C .
@@ -294,6 +316,8 @@ univ FUNCTION
     sorts A B C .
   exists:
     op _._ : $B=>$C $A=>$B -> $A=>$C .
+    var f : $B=>$C . var g : $A=>$B . var A : $A .
+    eq (f . g) A = f(g(A)) .
 
 enduniv
 ```
