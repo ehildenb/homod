@@ -240,10 +240,10 @@ Think of this as a universal construction. For every part of a specified theory,
 we want to guarantee the existence of another part. For example, for every sort
 `X` in a theory, we want to guarantee that `Set{X}` and `NeSet{X}` exist.
 Additionally, for every subsort `A < B`, we want to make sure that
-`Set{A} < Set{B}`.
+`Set{A} < Set{B}` and `NeSet{A} < NeSet{B}`.
 
-This data module has a "commutative diagram" flavor, where certain parts of the
-theory are called out as already existing (the `forall`), and as a result we
+This universal module has a "commutative diagram" flavor, where certain parts of
+the theory are called out as already existing (the `forall`), and as a result we
 ensure that other parts exsit (the `exists`).
 
 ```
@@ -252,9 +252,10 @@ univ SET
   forall:
     sort A .
   exists:
-    sorts NeSet{$A} Set{$A}     .
+    sorts NeSet{$A} Set{$A} .
     subsort $A < NeSet{$A} < Set{$A} .
-    op mt : -> Set{$A} .
+    
+    op mt  : -> Set{$A} .
     op _,_ : Set{$A}   Set{$A} -> Set{$A}   [ctor assoc comm id: mt prec 99] .
     op _,_ : NeSet{$A} Set{$A} -> NeSet{$A} [ctor ditto] .
 
@@ -266,7 +267,7 @@ univ SET
     subsort A < B .
   exists:
     subsort NeSet{$A} < NeSet{$B} .
-    subsorts Set{$Bot} < Set{$A} < Set{$B} .
+    subsorts Set{$A} < Set{$B} .
 
   --- alternative to MAPPABLE-SET (below)
   --- lift each operator on sort A to work on sort Set{A}
@@ -274,12 +275,12 @@ univ SET
     sorts A B .
     op f : A -> B .
   exists:
-    op $f : Set{A} -> Set{B} .
-    
-    var A : $A . vars NA NA' : NeSet{$A} .
-    eq $f(mt)       = mt               .
-    eq $f(A)        = f(A)             .
+    op $f : Set{$A} -> Set{$B} .
+
+    var a : $A . vars NA NA' : NeSet{$A} .
+    eq $f(mt)       = mt .
     eq $f(NA , NA') = $f(NA) , $f(NA') .
+
 enduniv
 ```
 
@@ -294,6 +295,13 @@ univ FUNCTION
   exists:
     sort $A=>$B .
     op __ : $A=>$B $A -> [$B] .
+
+  forall:
+    sort A .
+  exists:
+    op id : -> $A=>$A .
+    var a : $A .
+    eq id a = a .
     
   --- lambda abstraction
   forall:
@@ -301,9 +309,9 @@ univ FUNCTION
     op f : A -> B .
   exists:
     sort Var{$A} .
-    op $f : Var{$A} -> $A=>$B .
+    op $f : -> $A=>$B .
     var A : $A .
-    eq $f A = f(A) .
+    eq $f A = $f(A) .
 
   forall:
     sorts A B C .
@@ -317,6 +325,7 @@ univ FUNCTION
   exists:
     op _._ : $B=>$C $A=>$B -> $A=>$C .
     var f : $B=>$C . var g : $A=>$B . var A : $A .
+    eq id . g = g . eq f . id = f .
     eq (f . g) A = f(g(A)) .
 
 enduniv
@@ -324,6 +333,9 @@ enduniv
 
 Mappable Sets
 -------------
+
+Here we define an explicit `map` function for sets instead of generating an
+implicit operator over sets for ever operator over the base sorts.
 
 ```
 univ MAPPABLE-SET
