@@ -1,3 +1,9 @@
+---
+title: Universal Constructions in Maude
+author: Everett Hildenbrandt
+geometry: margin=2.5cm
+---
+
 Numbers
 =======
 
