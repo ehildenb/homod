@@ -463,3 +463,60 @@ If a universal construction calls out $n$ sorts in the assumption `forall: ...`
 and there are $m$ sorts in the module of interest, then the code-reduction is
 $O(m^n)$ worst-case (there will be less reduction if there are additional
 restrictions such as `subsort ...` relations among the called-out sorts).
+
+So we see that the universal clause `forall` represents the *loose* semantics of
+a functional theory, and the `exists` clause represents the *free* semantics
+over the variables declared in the preceding theory. The reason for this
+suggestion is that often the proof-obligations of a theory are trivial (eg. in
+the `TRIV` or `SUBSORT` theories) and the sort/operator mappings of a view are
+similarly trivial. Providing anonymous views seems natural here.
+
+However, some views are more involved (eg. sending theory operators to derived
+terms), or may have complicated proof obligations (which are not syntactically
+checkable or automatically dischageable). An anonymous view is not suitable in
+this case. Take a `POSET` for example:
+
+```
+fth POSET is
+  sort Elt .
+  
+  op _<_ : Elt Elt -> Bool .
+  op _<=_ : Elt Elt -> Bool .
+  
+  vars X Y Z : Elt .
+  ceq X < Z = true if X < Y /\ Y < Z   [nonexec label transitive] .
+  ceq X = Y if X < Y /\ Y < X          [nonexec label antisymmetric] .
+  eq X <= X = true                     [nonexec] .
+  ceq X <= Y = true if X < Y           [nonexec] .
+  ceq X = Y if X <= Y /\ X < Y = false [nonexec] .
+endfth
+```
+
+It may be difficult for Maude to automatically find every possible `view` of
+`POSET` in a given module, especially since the `view` can send the theory
+operators to derived terms. But, we can still gain in *extensibility* even using
+these theories:
+
+```
+univ LEX-PAIR is
+
+  forall:
+    view X from POSET .
+    view Y from POSET .
+  exists:
+    sort Pair{$X,$Y} .
+    op <_;_> : $(X.Elt) $(Y.Elt) -> Pair{$X,$Y} .
+    op _<_ : Pair{$X,$Y} Pair{$X,$Y} -> Bool .
+    op 1st : Pair{$X,$Y} -> $(X.Elt) .
+    op 2nd : Pair{$X,$Y} -> $(Y.Elt) .
+    vars A A’ : $(X.Elt) .
+    vars B B’ : $(Y.Elt) .
+    eq 1st(< A ; B >) = A .
+    eq 2nd(< A ; B >) = B .
+    eq < A ; B > < < A’ ; B’ > = (A < A’) or (A == A’ and B < B’) .
+
+enduniv
+```
+
+While the hard work of demonstrating a `view` to `POSET` is left to the user, at
+least the instantiation of two `POSET`s into a single `LEX-PAIR` is automatic.
