@@ -1,0 +1,4 @@
+#!/usr/bin/env zsh
+
+pandoc --from markdown --to latex --output univ.pdf univ.md
+pandoc-tangle --from markdown --to code-maude --code maude univ.md > univ.maude
