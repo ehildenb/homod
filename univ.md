@@ -4,95 +4,34 @@ author: Everett Hildenbrandt
 geometry: margin=2.5cm
 ---
 
-Numbers
-=======
+Working Modules
+---------------
 
-This is the numbers hierarchy from the prelude flattened and trimmed down a bit.
-We're just using it for the sort/subsort structure.
+Throughout we'll use the following module as an example to base our
+transformations on:
 
 ```maude
-fmod NUMBERS is
-  sorts Zero NzNat Nat .
-  subsort Zero NzNat < Nat .
-
-  sorts NzInt Int .
-  subsorts NzNat < NzInt Nat < Int .
-
-  sorts PosRat NzRat Rat .
-  subsorts NzInt < NzRat Int < Rat .
-  subsorts NzNat < PosRat < NzRat .
-
-  op 0 : -> Zero [ctor] .
-
-  op s_ : Nat -> NzNat [ctor iter] .
-
-  op _+_ : NzNat Nat -> NzNat [assoc comm prec 33] .
-  op _+_ : Nat Nat -> Nat [ditto] .
-
-  op sd : Nat Nat -> Nat [comm] .
-
-  op _*_ : NzNat NzNat -> NzNat [assoc comm prec 31] .
-  op _*_ : Nat Nat -> Nat [ditto] .
-
-  op -_ : NzNat -> NzInt [ctor] .
-  op -_ : NzInt -> NzInt [ditto] .
-  op -_ : Int -> Int [ditto] .
-
-  op _+_ : Int Int -> Int [assoc comm prec 33] .
-  op _-_ : Int Int -> Int [prec 33 gather (E e)] .
-
-  op _*_ : NzInt NzInt -> NzInt [assoc comm prec 31] .
-  op _*_ : Int Int -> Int [ditto] .
-
-  op _/_ : NzInt NzNat -> NzRat [ctor prec 31 gather (E e)] .
-
-  var I J : NzInt .
-  var N M : NzNat .
-  var K : Int .
-  var Z : Nat .
-  var Q : NzRat .
-  var R : Rat .
-
-  op _/_ : NzNat NzNat -> PosRat [ctor ditto] .
-  op _/_ : PosRat PosRat -> PosRat [ditto] .
-  op _/_ : NzRat NzRat -> NzRat [ditto] .
-  op _/_ : Rat NzRat -> Rat [ditto] .
-  eq 0 / Q = 0 .
-  eq I / - N = - I / N .
-  eq (I / N) / (J / M) = (I * M) / (J * N) .
-  eq (I / N) / J = I / (J * N) .
-  eq I / (J / M) = (I * M) / J .
-
-  op -_ : NzRat -> NzRat [ditto] .
-  op -_ : Rat -> Rat [ditto] .
-  eq - (I / N) = - I / N .
-
-  op _+_ : PosRat PosRat -> PosRat [ditto] .
-  op _+_ : PosRat Nat -> PosRat [ditto] .
-  op _+_ : Rat Rat -> Rat [ditto] .
-  eq I / N + J / M = (I * M + J * N) / (N * M) .
-  eq I / N + K = (I + K * N) / N .
-
-  op _-_ : Rat Rat -> Rat [ditto] .
-  eq I / N - J / M = (I * M - J * N) / (N * M) .
-  eq I / N - K = (I - K * N) / N .
-  eq K - J / M = (K * M - J ) / M .
-
-  op _*_ : PosRat PosRat -> PosRat [ditto] .
-  op _*_ : NzRat NzRat -> NzRat [ditto] .
-  op _*_ : Rat Rat -> Rat [ditto] .
-  eq Q * 0 = 0 .
-  eq (I / N) * (J / M) = (I * J) / (N * M).
-  eq (I / N) * K = (I * K) / N .
+fmod MYMOD is
+  sorts M N P .
+  subsorts N P < M .
+  op n : -> N .
+  op p : -> P .
+  op m : -> M .
+  
+  op f_ : M -> M .
+  eq f n = p .
+  eq f m = m .
+  eq f p = p .
 endfm
 ```
 
 Sets in Maude
 =============
 
-To have a set data-structure in Maude, this is the necassary work. Note that we
-want it to be the case that `Set{Nat} < Set{Int}`, which means we have to make
-all those subsort declarations ourselves in the module `MY-MOD`.
+Using a combination of theories, parameterized modules, and views, we can define
+sets over the sorts in `MYMOD`. We start with a `TRIV` theory, a parameterized
+`SET` module (taking a `TRIV` parameter), and views from `TRIV` to each sort in
+`MYMOD`:
 
 ```maude
 fth TRIV is sort Elt . endfth
@@ -110,145 +49,108 @@ fmod SET{X :: TRIV} is
   eq N , N = N .
 endfm
 
-view Zero   from TRIV to NUMBERS is sort Elt to Zero   . endv
-view NzNat  from TRIV to NUMBERS is sort Elt to NzNat  . endv
-view Nat    from TRIV to NUMBERS is sort Elt to Nat    . endv
-view NzInt  from TRIV to NUMBERS is sort Elt to NzInt  . endv
-view Int    from TRIV to NUMBERS is sort Elt to Int    . endv
-view PosRat from TRIV to NUMBERS is sort Elt to PosRat . endv
-view NzRat  from TRIV to NUMBERS is sort Elt to NzRat  . endv
-view Rat    from TRIV to NUMBERS is sort Elt to Rat    . endv
-
-fmod MY-MOD is
-  extending SET{Zero}   .
-  extending SET{NzNat}  .
-  extending SET{Nat}    .
-  extending SET{NzInt}  .
-  extending SET{Int}    .
-  extending SET{PosRat} .
-  extending SET{NzRat}  .
-  extending SET{Rat}    .
-
-  subsorts Set{Zero} Set{NzNat} < Set{Nat}             .
-  subsorts Set{NzNat} < Set{NzInt} Set{Nat} < Set{Int} .
-  subsorts Set{NzInt} < Set{NzRat} Set{Int} < Set{Rat} .
-  subsorts Set{NzNat} < Set{PosRat} < Set{NzRat}       .
-
-  subsort NeSet{Zero} NeSet{NzNat} < NeSet{Nat}                .
-  subsorts NeSet{NzNat} < NeSet{NzInt} NeSet{Nat} < NeSet{Int} .
-  subsorts NeSet{NzInt} < NeSet{NzRat} NeSet{Int} < NeSet{Rat} .
-  subsorts NeSet{NzNat} < NeSet{PosRat} < NeSet{NzRat}         .
-
-  subsort NeSet{Zero}   < Set{Zero}   .
-  subsort NeSet{NzNat}  < Set{NzNat}  .
-  subsort NeSet{Nat}    < Set{Nat}    .
-  subsort NeSet{NzInt}  < Set{NzInt}  .
-  subsort NeSet{Int}    < Set{Int}    .
-  subsort NeSet{PosRat} < Set{PosRat} .
-  subsort NeSet{NzRat}  < Set{NzRat}  .
-  subsort NeSet{Rat}    < Set{Rat}    .
-endfm
+view M from TRIV to MYMOD is sort Elt to M . endv
+view N from TRIV to MYMOD is sort Elt to N . endv
+view P from TRIV to MYMOD is sort Elt to P . endv
 ```
 
-What we Actually Want
-=====================
-
-However, in the example above, we aren't actually getting quite what we might
-hope for. It's a simple annoyance, namely that Maude spins up separate modules
-for each instantiation `extending Set{X}`. This causes many (useless) warnings
-about importing the operators `mt` and `_,_` from unrelated contexts. More
-realistically (and what people end up doing in practice with Maude, eg. in the
-prelude), what we want is the following flattened module:
+Finally we create a module which extends the parameterized modules with the
+appropriate views:
 
 ```maude
-fmod MY-MOD-2 is
-  protecting NUMBERS .
-  
-  --- for all sorts `A`, we want sorts `NeSet{A}` and `Set{A}`
-  sorts NeSet{Zero}    Set{Zero}
-        NeSet{NzNat}   Set{NzNat}
-        NeSet{Nat}     Set{Nat}
-        NeSet{NzInt}   Set{NzInt}
-        NeSet{Int}     Set{Int}
-        NeSet{PosRat}  Set{PosRat}
-        NeSet{NzRat}   Set{NzRat}
-        NeSet{Rat}     Set{Rat} .
-
-  --- for all sorts `A`, we want subsorts `A < NeSet{A} < Set{A}`
-  subsort Zero   < NeSet{Zero}   < Set{Zero}   .
-  subsort NzNat  < NeSet{NzNat}  < Set{NzNat}  .
-  subsort Nat    < NeSet{Nat}    < Set{Nat}    .
-  subsort NzInt  < NeSet{NzInt}  < Set{NzInt}  .
-  subsort Int    < NeSet{Int}    < Set{Int}    .
-  subsort PosRat < NeSet{PosRat} < Set{PosRat} .
-  subsort NzRat  < NeSet{NzRat}  < Set{NzRat}  .
-  subsort Rat    < NeSet{Rat}    < Set{Rat}    .
-
-  --- for all subsorts `A < B`, we want subsorts `Set{A} < Set{B}`
-  subsorts Set{Zero} Set{NzNat} < Set{Nat}  .
-  subsorts Set{NzNat} < Set{NzInt} Set{Nat} < Set{Int} .
-  subsorts Set{NzInt} < Set{NzRat} Set{Int} < Set{Rat} .
-  subsorts Set{NzNat} < Set{PosRat} < Set{NzRat}       .
-
-  --- for all subsorts `A < B`, we want subsorts `NeSet{A} < NeSet{B}`
-  subsort NeSet{Zero} NeSet{NzNat} < NeSet{Nat}                .
-  subsorts NeSet{NzNat} < NeSet{NzInt} NeSet{Nat} < NeSet{Int} .
-  subsorts NeSet{NzInt} < NeSet{NzRat} NeSet{Int} < NeSet{Rat} .
-  subsorts NeSet{NzNat} < NeSet{PosRat} < NeSet{NzRat}         .
-
-  --- for all sorts `A`, we want operator `mt : -> Set{A}`
-  op mt : -> Set{Zero}   [ctor] .
-  op mt : -> Set{NzNat}  [ctor] .
-  op mt : -> Set{Nat}    [ctor] .
-  op mt : -> Set{NzInt}  [ctor] .
-  op mt : -> Set{Int}    [ctor] .
-  op mt : -> Set{PosRat} [ctor] .
-  op mt : -> Set{NzRat}  [ctor] .
-  op mt : -> Set{Rat}    [ctor] .
-
-  --- for all sorts `A`, we want operator `_,_ : Set{A} Set{A} -> Set{A}`
-  op _,_ : Set{Zero}   Set{Zero}   -> Set{Zero}   [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{NzNat}  Set{NzNat}  -> Set{NzNat}  [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{Nat}    Set{Nat}    -> Set{Nat}    [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{NzInt}  Set{NzInt}  -> Set{NzInt}  [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{Int}    Set{Int}    -> Set{Int}    [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{PosRat} Set{PosRat} -> Set{PosRat} [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{NzRat}  Set{NzRat}  -> Set{NzRat}  [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{Rat}    Set{Rat}    -> Set{Rat}    [ctor assoc comm id: mt prec 99] .
-
-  --- for all sorts `A`, we want operator `_,_ : NeSet{A} Set{A} -> NeSet{A}`
-  op _,_ : NeSet{Zero}   Set{Zero}   -> NeSet{Zero}   [ctor ditto] .
-  op _,_ : NeSet{NzNat}  Set{NzNat}  -> NeSet{NzNat}  [ctor ditto] .
-  op _,_ : NeSet{Nat}    Set{Nat}    -> NeSet{Nat}    [ctor ditto] .
-  op _,_ : NeSet{NzInt}  Set{NzInt}  -> NeSet{NzInt}  [ctor ditto] .
-  op _,_ : NeSet{Int}    Set{Int}    -> NeSet{Int}    [ctor ditto] .
-  op _,_ : NeSet{PosRat} Set{PosRat} -> NeSet{PosRat} [ctor ditto] .
-  op _,_ : NeSet{NzRat}  Set{NzRat}  -> NeSet{NzRat}  [ctor ditto] .
-  op _,_ : NeSet{Rat}    Set{Rat}    -> NeSet{Rat}    [ctor ditto] .
-
-  --- for all sorts `A` (and a variable `NA : A`) we want the equation `NA , NA = NA`
-  var NeZero   : NeSet{Zero}   .
-  var NeNzNat  : NeSet{NzNat}  .
-  var NeNat    : NeSet{Nat}    .
-  var NeNzInt  : NeSet{NzInt}  .
-  var NeInt    : NeSet{Int}    .
-  var NePosRat : NeSet{PosRat} .
-  var NeNzRat  : NeSet{NzRat}  .
-  var NeRat    : NeSet{Rat}    .
-
-  eq NeZero   , NeZero   = NeZero   .
-  eq NeNzNat  , NeNzNat  = NeNzNat  .
-  eq NeNat    , NeNat    = NeNat    .
-  eq NeNzInt  , NeNzInt  = NeNzInt  .
-  eq NeInt    , NeInt    = NeInt    .
-  eq NePosRat , NePosRat = NePosRat .
-  eq NeNzRat  , NeNzRat  = NeNzRat  .
-  eq NeRat    , NeRat    = NeRat    .
+fmod MYMOD-SET is
+  extending SET{M} + SET{N} + SET{P} .
 endfm
 ```
 
-How to Get It?
-==============
+However, this is problematic because we don't have the (often-wanted) mirrored
+subsort structure. To fix this, the user manually specifies the desired
+subsorts:
+
+```maude
+fmod MYMOD-SET-SUBSORT is
+  extending MYMOD-SET .
+
+  subsort Set{N} < Set{M} .
+  subsort Set{P} < Set{M} .
+endfm
+
+reduce n , p .
+```
+
+```
+Maude> reduce n , p .
+Warning: sort declarations for constant mt do not have an unique least sort.
+Warning: sort declarations for operator _`,_ failed preregularity check on 10 out of 100 sort tuples. First such tuple is (Set{N}, N).
+Warning: sort declarations for associative operator _`,_ are non-associative on 60 out of 1000 sort triples. First such triple is (Set{M}, Set{N}, N).
+reduce in MYMOD-SET-SUBSORT : n,p .
+rewrites: 0 in 0ms cpu (0ms real) (~ rewrites/second)
+result NeSet{M}: n,p
+```
+
+Now, if we want to change the sort structure of `MYMOD`, we have to change it in
+two places! Obviously this is not good for maintainability. Additionally, as
+shown above, we are failing pre-regularity checks. Not shown here are the many
+advisories Maude gives about `mt` and `_,_` being imported from multiple places.
+
+So we can make a `SUBSORT` theory, and a `SET-SUBSORT` parameterized module
+which is "subsort aware":
+
+```maude
+fth SUBSORT is
+  sorts A B .
+  subsort A < B .
+endfth
+
+fmod SET-SUBSORT{X :: SUBSORT} is
+  sorts SetA{X} SetB{X} NeSetA{X} NeSetB{X} .
+  subsort X$A < NeSetA{X} < SetA{X} .
+  subsort X$B < NeSetB{X} < SetB{X} .
+  subsort SetA{X} < SetB{X} .
+
+  op mt  : -> SetA{X} .
+  op mt  : -> SetB{X} .
+
+  op _,_ : NeSetA{X} SetA{X} -> NeSetA{X} [ctor assoc comm id: mt prec 99] .
+  op _,_ : NeSetB{X} SetB{X} -> NeSetB{X} [ctor assoc comm id: mt prec 99] .
+  
+  op _,_ : SetA{X} SetA{X} -> SetA{X} [ctor ditto] .
+  op _,_ : SetB{X} SetB{X} -> SetB{X} [ctor ditto] .
+
+  var NA : NeSetA{X} .
+  eq NA , NA = NA .
+  
+  var NB : NeSetB{X} .
+  eq NB , NB = NB .
+endfm
+
+view N<M from SUBSORT to MYMOD is sort A to N . sort B to M . endv
+view P<M from SUBSORT to MYMOD is sort A to P . sort B to M . endv
+
+fmod MYMOD-SET-SUBSORT-2 is
+  extending SET-SUBSORT{N<M} + SET-SUBSORT{P<M} .
+endfm
+
+reduce n , p .
+```
+
+```
+Warning: sort declarations for constant mt do not have an unique least sort.
+Warning: sort declarations for operator _`,_ failed preregularity check on 17 out of 144 sort tuples. First such tuple is (SetA{N<M}, N).
+Warning: sort declarations for associative operator _`,_ are non-associative on 90 out of 1728 sort triples. First such triple is (SetB{N<M}, SetA{N<M}, N).
+==========================================
+reduce in MYMOD-SET-SUBSORT-2 : n,p .
+rewrites: 0 in 0ms cpu (0ms real) (~ rewrites/second)
+result NeSetB{P<M}: n,p
+```
+
+This fails pre-regularity checks as well, and has a slightly more convoluted
+sort as output. Additionally, if we had a module with *no* subsorts (eg. a
+many-sorted module), we would *not* be able to use this approach to construct
+sets, because there would be no view to `SUBSORT` possible.
+
+What do we Actually Want?
+=========================
 
 Think of this as a universal construction. For every part of a specified theory,
 we want to guarantee the existence of another part. For example, for every sort
@@ -278,18 +180,28 @@ univ SET is
     eq NA , NA = NA .
 
   --- automatic subsort generation over new sorts
-  --- already hard to express with views, see below
   forall:
-    sorts A B .
-    subsort A < B .
+    sorts A B NeSet{$A} NeSet{$B} Set{$A} Set{$B} .
+    subsort $A < $B .
   exists:
     subsort NeSet{$A} < NeSet{$B} .
     subsorts Set{$A} < Set{$B} .
+    
+enduniv
+```
+
+We would also like to lift all operators over a sort `A` to work over sort
+`Set{A}`. This is just another universal construction (which assumes that the
+`SET` universal construction has already been applied):
+
+```
+univ SET-MAP is
+  assuming SET .
 
   --- automatically lift each operator on sort `A` to work on sort `Set{A}`
   forall:
     sorts A B .
-    op f : A -> B .
+    op f : $A -> $B .
   exists:
     op $f : Set{$A} -> Set{$B} .
 
@@ -300,38 +212,260 @@ univ SET is
 enduniv
 ```
 
-Note that the first universal construction (which just calls out `sort A`), is
-equivalent to the parameterized module `SET{X :: TRIV}`, where we can think of
-this as instantiating an *anonymous view* to theory `TRIV` for every sort `A`.
+Note:
+:   Alternatively, we could assume that universal constructions are applied in
+    order within the `univ ... enduniv` module. I'm not sure what the correct
+    approach for "sequentializing" the constructions is. Notice that in the
+    `SET` construction I'm fully calling out stuff built in the first
+    construction in the second ones `forall` clause to ensure that it already
+    exists before applying the second construction. Perhaps instead we should
+    just assume that they are executed in order. In `SET-MAP`, the
+    `assuming SET` clause forces `SET` to be applied first.
 
-Similarly, the second universal construction (which calls out
-`sorts A B . subsort A < B .`), is an anonymous view to the theory:
+Semantics
+=========
+
+Here we'll give "semantics by example", as actual semantics aren't fleshed out.
+Two options are provided: (i) desugaring into Maude's theories,
+parameterized-modules, and views; (ii) syntactic transformation on the original
+definition.
+
+As Theories/Parameterized-Modules/Views
+---------------------------------------
+
+First we apply the transformation described by the first part of the universal
+construction. Notice that the universal part (`forall: ...`) corresponds to a
+functional theory, and the existential part (`exists: ...`) corresponds to a
+parameterized-module (as you would expect given the initial/free semantics
+respectively).
+
+```maude
+fth SET-THEORY-1 is
+  sort A .
+endfth
+
+fmod SET-MODULE-1{X :: SET-THEORY-1} is
+  sorts Set{X} NeSet{X} .
+  subsort X$A < NeSet{X} < Set{X} .
+  op mt : -> Set{X} .
+  op _,_ : Set{X} Set{X} -> Set{X} [ctor assoc comm id: mt prec 99] .
+  op _,_ : Set{X} NeSet{X} -> NeSet{X} [ctor ditto] .
+  var a : NeSet{X} NeSet{X} .
+  eq a , a = a .
+endfm
+```
+
+Intermediate views and a module are generated:
+
+```maude
+view SET-1-M from SET-THEORY-1 to MYMOD is sort A to M . endv
+view SET-1-N from SET-THEORY-1 to MYMOD is sort A to N . endv
+view SET-1-P from SET-THEORY-1 to MYMOD is sort A to P . endv
+  
+fmod MYMOD-EXTENDED-1 is
+  protecting MYMOD .
+  protecting   SET-MODULE-1{SET-1-M}
+             + SET-MODULE-1{SET-1-N}
+             + SET-MODULE-1{SET-1-P} . 
+endfm
+```
+
+Then the next theory is generated:
+
+```maude
+fth SET-THEORY-2 is
+  sorts A B Set{A} Set{B} NeSet{A} NeSet{B} .
+  subsort A < B .
+endfth
+
+fmod SET-MODULE-2{X :: SET-THEORY-2} is
+  subsort X$Set{A} < X$Set{B} .
+  subsort X$NeSet{A} < X$NeSet{B} .
+endfm
+```
+
+And finally we generate the appropriate views (from the second theory into the
+intermediate generated module), along with the final module:
+
+```maude
+view MYMOD-N-M from SET-THEORY-2 to MYMOD-EXTENDED-1 is
+  sort A to N . sort Set{A} to Set{SET-1-N} . sort NeSet{A} to NeSet{SET-1-N} .
+  sort B to M . sort Set{B} to Set{SET-1-M} . sort NeSet{B} to NeSet{SET-1-M} .
+endv
+
+view MYMOD-P-M from SET-THEORY-2 to MYMOD-EXTENDED-1 is
+  sort A to P . sort Set{A} to Set{SET-1-P} . sort NeSet{A} to NeSet{SET-1-P} .
+  sort B to M . sort Set{B} to Set{SET-1-M} . sort NeSet{B} to NeSet{SET-1-M} .
+endv
+
+fmod MYMOD-EXTENDED is
+  protecting MYMOD-EXTENDED-1 .
+  protecting   SET-MODULE-2{MYMOD-N-M}
+             + SET-MODULE-2{MYMOD-P-M} .
+endfm
+
+reduce mt , p , n , m , p .
+```
+
+So we see that the universal clause `forall` represents the *loose* semantics of
+a functional theory, and the `exists` clause represents the *free* semantics
+over the variables declared in the preceding theory.
+
+Unfortunately, the resulting module `MYMOD-EXTENDED` has strange names for
+everything that has been generated, for example:
 
 ```
-fth SUBSORT is
-  sorts A B .
-  subsort A < B .
+Maude> reduce mt , p , n , m , p .
+reduce in MYMOD-EXTENDED : p,n,p,m .
+rewrites: 1 in 0ms cpu (0ms real) (~ rewrites/second)
+result Set{SET-1-M}: n,p,m
+```
+
+Syntactic Transformation
+------------------------
+
+
+Here we see that `n , p , m` has sort `Set{SET-1-M}`, where we would actually
+like it to have sort `Set{M}` for readability and ease-of-use. It's not clear
+that simpler names could easily be generated, especially when intermediate
+modules/views/theories are needed. If instead the semantics are given in terms
+of a definition transformation, the whole issue of cluttering name-spaces is
+avoided. Intuitively, the module `MYMOD` is extended to:
+
+```maude
+fmod MYMOD-EXTENDED-CLEAN is
+  sorts M N P .
+  subsorts N P < M .
+  op n : -> N .
+  op p : -> P .
+  op m : -> M .
+  
+  op f_ : M -> M .
+  eq f n = p .
+  eq f m = m .
+  eq f p = p .
+
+  --- first construction with { A |-> M }
+  sorts NeSet{M} Set{M} .
+  subsort M < NeSet{M} < Set{M} .
+  
+  op mt  : -> Set{M} .
+  op _,_ : Set{M}   Set{M} -> Set{M}   [ctor assoc comm id: mt prec 99] .
+  op _,_ : NeSet{M} Set{M} -> NeSet{M} [ctor ditto] .
+  
+  var NA1 : NeSet{M} .
+  eq NA1 , NA1 = NA1 .
+
+  --- first construction with { A |-> N }
+  sorts NeSet{N} Set{N} .
+  subsort N < NeSet{N} < Set{N} .
+  
+  op mt  : -> Set{N} .
+  op _,_ : Set{N}   Set{N} -> Set{N}   [ctor assoc comm id: mt prec 99] .
+  op _,_ : NeSet{N} Set{N} -> NeSet{N} [ctor ditto] .
+  
+  var NA2 : NeSet{N} .
+  eq NA2 , NA2 = NA2 .
+
+  --- first construction with { A |-> P }
+  sorts NeSet{P} Set{P} .
+  subsort P < NeSet{P} < Set{P} .
+  
+  op mt  : -> Set{P} .
+  op _,_ : Set{P}   Set{P} -> Set{P}   [ctor assoc comm id: mt prec 99] .
+  op _,_ : NeSet{P} Set{P} -> NeSet{P} [ctor ditto] .
+  
+  var NA3 : NeSet{P} .
+  eq NA3 , NA3 = NA3 .
+  
+  --- second construction with { A |-> N , B |-> M }
+  subsort Set{N} < Set{M} .
+  subsort NeSet{N} < NeSet{M} .
+
+  --- second construction with { A |-> P , B |-> M }
+  subsort Set{P} < Set{M} .
+  subsort NeSet{P} < NeSet{M} .
+  
+  --- third construction with { A |-> M , B |-> M , f |-> f_ }
+  op f_ : Set{M} -> Set{M} .
+
+  var a : M . vars NA NA' : Set{M} .
+  eq f mt         = mt .
+  eq f (NA , NA') = (f NA) , (f NA') .
+endfm
+
+reduce mt , p , n , m , p .
+reduce f (mt , p , n , m , p) .
+```
+
+This eliminates many of the advisories Maude gives about operators being
+imported from many places, and has nicer names for all the associated sorts:
+
+```
+reduce in MYMOD-EXTENDED-CLEAN : p,n,p,m .
+rewrites: 1 in 0ms cpu (0ms real) (~ rewrites/second)
+result NeSet{M}: n,p,m
+
+reduce in MYMOD-EXTENDED-CLEAN : f (p,n,p,m) .
+rewrites: 7 in 0ms cpu (0ms real) (~ rewrites/second)
+result NeSet{M}: p,m
+```
+
+Where it Breaks Down
+====================
+
+Some views are more involved (eg. sending theory operators to derived terms), or
+may have complicated proof obligations (which are not syntactically checkable or
+automatically dischageable). An anonymous view is not suitable in this case.
+Take a `POSET` for example:
+
+```
+fth POSET is
+  sort Elt .
+  
+  op _<_ : Elt Elt -> Bool .
+  op _<=_ : Elt Elt -> Bool .
+  
+  vars X Y Z : Elt .
+  ceq X < Z = true if X < Y /\ Y < Z   [nonexec label transitive] .
+  ceq X = Y if X < Y /\ Y < X          [nonexec label antisymmetric] .
+  eq X <= X = true                     [nonexec] .
+  ceq X <= Y = true if X < Y           [nonexec] .
+  ceq X = Y if X <= Y /\ X < Y = false [nonexec] .
 endfth
 ```
 
-Note that actually creating this view and calling out how every sub-sort
-relation of interest satisfies it would take a large chunk of repetitive code,
-and would create a cluttered namespace of views (and would effectively be
-repeating the code which actually just declares the subsorts):
+It may be difficult for Maude to automatically find every possible `view` of
+`POSET` in a given module, especially since the `view` can send the theory
+operators to derived terms. But, we can still gain in *extensibility* even using
+these theories:
 
 ```
-view Int<Nat from SUBSORT to NUMBERS is sort A to Nat . sort B to Int . endv
-view Rat<Int from SUBSORT to NUMBERS is sort A to Int . sort B to Rat . endv
-...
+univ LEX-PAIR is
+
+  forall:
+    view X from POSET .
+    view Y from POSET .
+  exists:
+    sort Pair{$X,$Y} .
+    op <_;_> : $(X.Elt) $(Y.Elt) -> Pair{$X,$Y} .
+    op _<_ : Pair{$X,$Y} Pair{$X,$Y} -> Bool .
+    op 1st : Pair{$X,$Y} -> $(X.Elt) .
+    op 2nd : Pair{$X,$Y} -> $(Y.Elt) .
+    vars A A’ : $(X.Elt) .
+    vars B B’ : $(Y.Elt) .
+    eq 1st(< A ; B >) = A .
+    eq 2nd(< A ; B >) = B .
+    eq < A ; B > < < A’ ; B’ > = (A < A’) or (A == A’ and B < B’) .
+
+enduniv
 ```
 
-In addition, once the subsort structure changes in the code, the views have to
-change too, making the code unwiedly and unmaintainable. The next anonymous view
-(of two sorts and an operator between them) emphasizes this even more. When the
-views are anonymous in the actual code, but instantiated at compile-time, *all*
-operators of arity `op : A' A A'' -> B` (where `A'` and `A''` can be any
-sort-string) can be considered for lifting to work over `Set{A}` without any
-extra work.
+While the hard work of demonstrating a `view` to `POSET` is left to the user, at
+least the instantiation of two `POSET`s into a single `LEX-PAIR` is automatic.
+
+Extras
+======
 
 Functions
 ---------
@@ -408,121 +542,3 @@ univ MAPPABLE-SET is
 
 enduniv
 ```
-
-Desugaring to Views
-===================
-
-As already hinted at, there is a natural desugaring of one of these universal
-constructions to a theory+parameterized-module+views.
-
-This universal construction adds a constant to each sort by creating a
-super-sort and adding the constant there:
-
-```
-univ ADJOIN is
-
-  forall:
-    sort A .
-  exists:
-    sort Sup{$A} .
-    subsort $A < Sup{$A} .
-    op e : -> Sup{$A} .
-
-enduniv
-```
-
-Here is a simple module:
-
-```maude
-fmod TEST-ADJOIN is
-  sorts M N P .
-  subsorts N P < M .
-endfm
-```
-
-And here is what would be generated:
-
-```maude
-fth ADJOIN-THEORY is
-  sort A .
-endfth
-
-fmod ADJOIN-MODULE{X :: ADJOIN-THEORY} is
-  sort Sup{X} .
-  subsort X$A < Sup{X} .
-  op e : -> Sup{X} .
-endfm
-
-view ADJOIN-MODULE-M from ADJOIN-THEORY to TEST-ADJOIN is sort A to M . endv
-view ADJOIN-MODULE-N from ADJOIN-THEORY to TEST-ADJOIN is sort A to N . endv
-view ADJOIN-MODULE-P from ADJOIN-THEORY to TEST-ADJOIN is sort A to P . endv
-
-fmod TEST-ADJOIN-EXTENDED is
-  protecting TEST-ADJOIN .
-  protecting   ADJOIN-MODULE{ADJOIN-MODULE-M}
-             + ADJOIN-MODULE{ADJOIN-MODULE-N}
-             + ADJOIN-MODULE{ADJOIN-MODULE-P} .
-endfm
-```
-
-If a universal construction calls out $n$ sorts in the assumption `forall: ...`
-and there are $m$ sorts in the module of interest, then the code-reduction is
-$O(m^n)$ worst-case (there will be less reduction if there are additional
-restrictions such as `subsort ...` relations among the called-out sorts).
-
-So we see that the universal clause `forall` represents the *loose* semantics of
-a functional theory, and the `exists` clause represents the *free* semantics
-over the variables declared in the preceding theory. The reason for this
-suggestion is that often the proof-obligations of a theory are trivial (eg. in
-the `TRIV` or `SUBSORT` theories) and the sort/operator mappings of a view are
-similarly trivial. Providing anonymous views seems natural here.
-
-However, some views are more involved (eg. sending theory operators to derived
-terms), or may have complicated proof obligations (which are not syntactically
-checkable or automatically dischageable). An anonymous view is not suitable in
-this case. Take a `POSET` for example:
-
-```
-fth POSET is
-  sort Elt .
-  
-  op _<_ : Elt Elt -> Bool .
-  op _<=_ : Elt Elt -> Bool .
-  
-  vars X Y Z : Elt .
-  ceq X < Z = true if X < Y /\ Y < Z   [nonexec label transitive] .
-  ceq X = Y if X < Y /\ Y < X          [nonexec label antisymmetric] .
-  eq X <= X = true                     [nonexec] .
-  ceq X <= Y = true if X < Y           [nonexec] .
-  ceq X = Y if X <= Y /\ X < Y = false [nonexec] .
-endfth
-```
-
-It may be difficult for Maude to automatically find every possible `view` of
-`POSET` in a given module, especially since the `view` can send the theory
-operators to derived terms. But, we can still gain in *extensibility* even using
-these theories:
-
-```
-univ LEX-PAIR is
-
-  forall:
-    view X from POSET .
-    view Y from POSET .
-  exists:
-    sort Pair{$X,$Y} .
-    op <_;_> : $(X.Elt) $(Y.Elt) -> Pair{$X,$Y} .
-    op _<_ : Pair{$X,$Y} Pair{$X,$Y} -> Bool .
-    op 1st : Pair{$X,$Y} -> $(X.Elt) .
-    op 2nd : Pair{$X,$Y} -> $(Y.Elt) .
-    vars A A’ : $(X.Elt) .
-    vars B B’ : $(Y.Elt) .
-    eq 1st(< A ; B >) = A .
-    eq 2nd(< A ; B >) = B .
-    eq < A ; B > < < A’ ; B’ > = (A < A’) or (A == A’ and B < B’) .
-
-enduniv
-```
-
-While the hard work of demonstrating a `view` to `POSET` is left to the user, at
-least the instantiation of two `POSET`s into a single `LEX-PAIR` is automatic.
