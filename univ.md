@@ -255,8 +255,9 @@ the theory are called out as already existing (the `forall`), and as a result we
 ensure that other parts exsit (the `exists`).
 
 ```
-univ SET
+univ SET is
 
+  --- Maude's normal notion of `SET{A}`, for `A` a view to `TRIV`
   forall:
     sort A .
   exists:
@@ -269,7 +270,9 @@ univ SET
 
     var NA : NeSet{$A} .
     eq NA , NA = NA .
-   
+
+  --- automatic subsort generation over new sorts
+  --- already hard to express with views, see below
   forall:
     sorts A B .
     subsort A < B .
@@ -277,8 +280,7 @@ univ SET
     subsort NeSet{$A} < NeSet{$B} .
     subsorts Set{$A} < Set{$B} .
 
-  --- alternative to MAPPABLE-SET (below)
-  --- lift each operator on sort A to work on sort Set{A}
+  --- automatically lift each operator on sort `A` to work on sort `Set{A}`
   forall:
     sorts A B .
     op f : A -> B .
@@ -292,12 +294,46 @@ univ SET
 enduniv
 ```
 
+Note that the first universal construction (which just calls out `sort A`), is
+equivalent to the parameterized module `SET{X :: TRIV}`, where we can think of
+this as instantiating an *anonymous view* to theory `TRIV` for every sort `A`.
+
+Similarly, the second universal construction (which calls out
+`sorts A B . subsort A < B .`), is an anonymous view to the theory:
+
+```
+fth SUBSORT is
+  sorts A B .
+  subsort A < B .
+endfth
+```
+
+Note that actually creating this view and calling out how every sub-sort
+relation of interest satisfies it would take a large chunk of repetitive code,
+and would create a cluttered namespace of views (and would effectively be
+repeating the code which actually just declares the subsorts):
+
+```
+view Int<Nat from SUBSORT to NUMBERS is sort A to Nat . sort B to Int . endv
+view Rat<Int from SUBSORT to NUMBERS is sort A to Int . sort B to Rat . endv
+...
+```
+
+In addition, once the subsort structure changes in the code, the views have to
+change too, making the code unwiedly and unmaintainable. The next anonymous view
+(of two sorts and an operator between them) emphasizes this even more. When the
+views are anonymous in the actual code, but instantiated at compile-time, *all*
+operators of arity `op : A' A A'' -> B` (where `A'` and `A''` can be any
+sort-string) can be considered for lifting to work over `Set{A}` without any
+extra work.
+
 Functions
 ---------
 
 ```
-univ FUNCTION
+univ FUNCTION is
 
+  --- function sorts
   forall:
     sorts A B .
   exists:
@@ -323,13 +359,6 @@ univ FUNCTION
 
   forall:
     sorts A B C .
-    subsort A < B .
-  exists:
-    subsort $C=>$A < $C=>$B .
-    subsort $B=>$C < $A=>$C .
-
-  forall:
-    sorts A B C .
   exists:
     op _._ : $B=>$C $A=>$B -> $A=>$C .
 
@@ -338,6 +367,13 @@ univ FUNCTION
     eq id . g = g .
     eq f . id = f .
     eq (f . g) A = f(g(A)) .
+
+  forall:
+    sorts A B C .
+    subsort A < B .
+  exists:
+    subsort $C=>$A < $C=>$B .
+    subsort $B=>$C < $A=>$C .
 
 enduniv
 ```
@@ -349,9 +385,9 @@ Here we define an explicit `map` function for sets instead of generating an
 implicit operator over sets for ever operator over the base sorts.
 
 ```
-univ MAPPABLE-SET
-  extends SET .
-  extends FUNCTION .
+univ MAPPABLE-SET is
+  extending SET .
+  extending FUNCTION .
 
   forall:
     sorts A B .
@@ -366,3 +402,64 @@ univ MAPPABLE-SET
 
 enduniv
 ```
+
+Desugaring to Views
+===================
+
+As already hinted at, there is a natural desugaring of one of these universal
+constructions to a theory+parameterized-module+views.
+
+This universal construction adds a constant to each sort by creating a
+super-sort and adding the constant there:
+
+```
+univ ADJOIN is
+
+  forall:
+    sort A .
+  exists:
+    sort Sup{$A} .
+    subsort $A < Sup{$A} .
+    op e : -> Sup{$A} .
+
+enduniv
+```
+
+Here is a simple module:
+
+```maude
+fmod TEST-ADJOIN is
+  sorts M N P .
+  subsorts N P < M .
+endfm
+```
+
+And here is what would be generated:
+
+```maude
+fth ADJOIN-THEORY is
+  sort A .
+endfth
+
+fmod ADJOIN-MODULE{X :: ADJOIN-THEORY} is
+  sort Sup{X} .
+  subsort X$A < Sup{X} .
+  op e : -> Sup{X} .
+endfm
+
+view ADJOIN-MODULE-M from ADJOIN-THEORY to TEST-ADJOIN is sort A to M . endv
+view ADJOIN-MODULE-N from ADJOIN-THEORY to TEST-ADJOIN is sort A to N . endv
+view ADJOIN-MODULE-P from ADJOIN-THEORY to TEST-ADJOIN is sort A to P . endv
+
+fmod TEST-ADJOIN-EXTENDED is
+  protecting TEST-ADJOIN .
+  protecting   ADJOIN-MODULE{ADJOIN-MODULE-M}
+             + ADJOIN-MODULE{ADJOIN-MODULE-N}
+             + ADJOIN-MODULE{ADJOIN-MODULE-P} .
+endfm
+```
+
+If a universal construction calls out $n$ sorts in the assumption `forall: ...`
+and there are $m$ sorts in the module of interest, then the code-reduction is
+$O(m^n)$ worst-case (there will be less reduction if there are additional
+restrictions such as `subsort ...` relations among the called-out sorts).
