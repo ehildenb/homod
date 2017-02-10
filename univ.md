@@ -534,7 +534,7 @@ univ SUBSTITUTION is
   exists:
     sort Subst{$A} .
     op _:=_ : Var{$A} $A -> Subst{$A} .
-    op _[_] : $A Subst{$A} -> $A .
+    op _[_] : Var{$A} Subst{$A} -> $A .
     vars va1 va2 : Var{$A} . var a : $A .
     eq va1 [va2 := a] = if va1 == va2 then a else va1 fi .
 
@@ -546,11 +546,12 @@ univ SUBSTITUTION is
 
   forall:
     sort* A .
-    sorts B C Subst{$C} .
+    sorts B C Subst{$C} Ground{$B} .
     op f : $A -> $B .
   exists:
     op _[_] : $B Subst{$C} -> $B .
-    var as : $A . var sc : Subst{$C} .
+    var as : $A . var sc : Subst{$C} . var gb : Ground{$B} .
+    eq gb[sc] = gb .
     eq $f(as)[sc] = $f(as[sc]) .
 
 enduniv
