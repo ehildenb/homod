@@ -1,6 +1,5 @@
 ---
 title: Universal Constructions in Maude
-author: Everett Hildenbrandt
 geometry: margin=2.5cm
 ---
 
@@ -42,11 +41,11 @@ fmod SET{X :: TRIV} is
 
   op mt  : -> Set{X} .
 
-  op _,_ : NeSet{X} Set{X} -> NeSet{X} [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{X}   Set{X} -> Set{X}   [ctor ditto] .
+  op __ : NeSet{X} Set{X} -> NeSet{X} [ctor assoc comm id: mt prec 99] .
+  op __ : Set{X}   Set{X} -> Set{X}   [ctor ditto] .
 
   var N : NeSet{X} .
-  eq N , N = N .
+  eq N N = N .
 endfm
 
 view M from TRIV to MYMOD is sort Elt to M . endv
@@ -75,17 +74,17 @@ fmod MYMOD-SET-SUBSORT is
   subsort Set{P} < Set{M} .
 endfm
 
-reduce n , p .
+reduce n p .
 ```
 
 ```
-Maude> reduce n , p .
+Maude> reduce n p .
 Warning: sort declarations for constant mt do not have an unique least sort.
-Warning: sort declarations for operator _`,_ failed preregularity check on 10 out of 100 sort tuples. First such tuple is (Set{N}, N).
-Warning: sort declarations for associative operator _`,_ are non-associative on 60 out of 1000 sort triples. First such triple is (Set{M}, Set{N}, N).
-reduce in MYMOD-SET-SUBSORT : n,p .
+Warning: sort declarations for operator __ failed preregularity check on 10 out of 100 sort tuples. First such tuple is (Set{N}, N).
+Warning: sort declarations for associative operator __ are non-associative on 60 out of 1000 sort triples. First such triple is (Set{M}, Set{N}, N).
+reduce in MYMOD-SET-SUBSORT : n p .
 rewrites: 0 in 0ms cpu (0ms real) (~ rewrites/second)
-result NeSet{M}: n,p
+result NeSet{M}: n p
 ```
 
 Now, if we want to change the sort structure of `MYMOD`, we have to change it in
@@ -111,17 +110,17 @@ fmod SET-SUBSORT{X :: SUBSORT} is
   op mt  : -> SetA{X} .
   op mt  : -> SetB{X} .
 
-  op _,_ : NeSetA{X} SetA{X} -> NeSetA{X} [ctor assoc comm id: mt prec 99] .
-  op _,_ : NeSetB{X} SetB{X} -> NeSetB{X} [ctor assoc comm id: mt prec 99] .
+  op __ : NeSetA{X} SetA{X} -> NeSetA{X} [ctor assoc comm id: mt prec 99] .
+  op __ : NeSetB{X} SetB{X} -> NeSetB{X} [ctor assoc comm id: mt prec 99] .
   
-  op _,_ : SetA{X} SetA{X} -> SetA{X} [ctor ditto] .
-  op _,_ : SetB{X} SetB{X} -> SetB{X} [ctor ditto] .
+  op __ : SetA{X} SetA{X} -> SetA{X} [ctor ditto] .
+  op __ : SetB{X} SetB{X} -> SetB{X} [ctor ditto] .
 
   var NA : NeSetA{X} .
-  eq NA , NA = NA .
+  eq NA NA = NA .
   
   var NB : NeSetB{X} .
-  eq NB , NB = NB .
+  eq NB NB = NB .
 endfm
 
 view N<M from SUBSORT to MYMOD is sort A to N . sort B to M . endv
@@ -131,17 +130,17 @@ fmod MYMOD-SET-SUBSORT-2 is
   extending SET-SUBSORT{N<M} + SET-SUBSORT{P<M} .
 endfm
 
-reduce n , p .
+reduce n p .
 ```
 
 ```
 Warning: sort declarations for constant mt do not have an unique least sort.
-Warning: sort declarations for operator _`,_ failed preregularity check on 17 out of 144 sort tuples. First such tuple is (SetA{N<M}, N).
-Warning: sort declarations for associative operator _`,_ are non-associative on 90 out of 1728 sort triples. First such triple is (SetB{N<M}, SetA{N<M}, N).
+Warning: sort declarations for operator __ failed preregularity check on 17 out of 144 sort tuples. First such tuple is (SetA{N<M}, N).
+Warning: sort declarations for associative operator __ are non-associative on 90 out of 1728 sort triples. First such triple is (SetB{N<M}, SetA{N<M}, N).
 ==========================================
-reduce in MYMOD-SET-SUBSORT-2 : n,p .
+reduce in MYMOD-SET-SUBSORT-2 : n p p .
 rewrites: 0 in 0ms cpu (0ms real) (~ rewrites/second)
-result NeSetB{P<M}: n,p
+result NeSetB{P<M}: n p
 ```
 
 This fails pre-regularity checks as well, and has a slightly more convoluted
@@ -172,12 +171,12 @@ univ SET is
     sorts NeSet{$A} Set{$A} .
     subsort $A < NeSet{$A} < Set{$A} .
     
-    op mt  : -> Set{$A} .
-    op _,_ : Set{$A}   Set{$A} -> Set{$A}   [ctor assoc comm id: mt prec 99] .
-    op _,_ : NeSet{$A} Set{$A} -> NeSet{$A} [ctor ditto] .
+    op mt : -> Set{$A} .
+    op __ : Set{$A}   Set{$A} -> Set{$A}   [ctor assoc comm id: mt prec 99] .
+    op __ : NeSet{$A} Set{$A} -> NeSet{$A} [ctor ditto] .
 
     var NA : NeSet{$A} .
-    eq NA , NA = NA .
+    eq NA NA = NA .
 
   --- automatic subsort generation over new sorts
   forall:
@@ -187,27 +186,19 @@ univ SET is
     subsort NeSet{$A} < NeSet{$B} .
     subsorts Set{$A} < Set{$B} .
     
-enduniv
-```
-
-We would also like to lift all operators over a sort `A` to work over sort
-`Set{A}`. This is just another universal construction (which assumes that the
-`SET` universal construction has already been applied):
-
-```
-univ SET-MAP is
-  assuming SET .
-
   --- automatically lift each operator on sort `A` to work on sort `Set{A}`
+  --- denote that C D are strings of sorts (possibly \eps) with `sorts*`
   forall:
     sorts A B .
-    op f : $A -> $B .
+    sorts* C D .
+    op f : $C $A $D -> $B .
   exists:
-    op $f : Set{$A} -> Set{$B} .
+    op $f : $C Set{$A} $C' -> Set{$B} .
 
     var a : $A . vars NA NA' : NeSet{$A} .
-    eq $f(mt)       = mt .
-    eq $f(NA , NA') = $f(NA) , $f(NA') .
+    var c : $C . var d : $D .
+    eq $f(c, mt, d)       = mt .
+    eq $f(c, (NA NA'), d) = $f(c, NA, d) $f(c, NA', d) .
 
 enduniv
 ```
@@ -248,10 +239,10 @@ fmod SET-MODULE-1{X :: SET-THEORY-1} is
   sorts Set{X} NeSet{X} .
   subsort X$A < NeSet{X} < Set{X} .
   op mt : -> Set{X} .
-  op _,_ : Set{X} Set{X} -> Set{X} [ctor assoc comm id: mt prec 99] .
-  op _,_ : Set{X} NeSet{X} -> NeSet{X} [ctor ditto] .
-  var a : NeSet{X} NeSet{X} .
-  eq a , a = a .
+  op __ : Set{X} Set{X} -> Set{X} [ctor assoc comm id: mt prec 99] .
+  op __ : Set{X} NeSet{X} -> NeSet{X} [ctor ditto] .
+  var a : NeSet{X} .
+  eq a a = a .
 endfm
 ```
 
@@ -304,7 +295,7 @@ fmod MYMOD-EXTENDED is
              + SET-MODULE-2{MYMOD-P-M} .
 endfm
 
-reduce mt , p , n , m , p .
+reduce mt p n m p .
 ```
 
 So we see that the universal clause `forall` represents the *loose* semantics of
@@ -315,10 +306,10 @@ Unfortunately, the resulting module `MYMOD-EXTENDED` has strange names for
 everything that has been generated, for example:
 
 ```
-Maude> reduce mt , p , n , m , p .
+Maude> reduce mt p n m p .
 reduce in MYMOD-EXTENDED : p,n,p,m .
 rewrites: 1 in 0ms cpu (0ms real) (~ rewrites/second)
-result Set{SET-1-M}: n,p,m
+result Set{SET-1-M}: n p m
 ```
 
 Syntactic Transformation
@@ -350,33 +341,33 @@ fmod MYMOD-EXTENDED-CLEAN is
   subsort M < NeSet{M} < Set{M} .
   
   op mt  : -> Set{M} .
-  op _,_ : Set{M}   Set{M} -> Set{M}   [ctor assoc comm id: mt prec 99] .
-  op _,_ : NeSet{M} Set{M} -> NeSet{M} [ctor ditto] .
+  op __ : Set{M}   Set{M} -> Set{M}   [ctor assoc comm id: mt prec 99] .
+  op __ : NeSet{M} Set{M} -> NeSet{M} [ctor ditto] .
   
   var NA1 : NeSet{M} .
-  eq NA1 , NA1 = NA1 .
+  eq NA1 NA1 = NA1 .
 
   --- first construction with { A |-> N }
   sorts NeSet{N} Set{N} .
   subsort N < NeSet{N} < Set{N} .
   
   op mt  : -> Set{N} .
-  op _,_ : Set{N}   Set{N} -> Set{N}   [ctor assoc comm id: mt prec 99] .
-  op _,_ : NeSet{N} Set{N} -> NeSet{N} [ctor ditto] .
+  op __ : Set{N}   Set{N} -> Set{N}   [ctor assoc comm id: mt prec 99] .
+  op __ : NeSet{N} Set{N} -> NeSet{N} [ctor ditto] .
   
   var NA2 : NeSet{N} .
-  eq NA2 , NA2 = NA2 .
+  eq NA2 NA2 = NA2 .
 
   --- first construction with { A |-> P }
   sorts NeSet{P} Set{P} .
   subsort P < NeSet{P} < Set{P} .
   
   op mt  : -> Set{P} .
-  op _,_ : Set{P}   Set{P} -> Set{P}   [ctor assoc comm id: mt prec 99] .
-  op _,_ : NeSet{P} Set{P} -> NeSet{P} [ctor ditto] .
+  op __ : Set{P}   Set{P} -> Set{P}   [ctor assoc comm id: mt prec 99] .
+  op __ : NeSet{P} Set{P} -> NeSet{P} [ctor ditto] .
   
   var NA3 : NeSet{P} .
-  eq NA3 , NA3 = NA3 .
+  eq NA3 NA3 = NA3 .
   
   --- second construction with { A |-> N , B |-> M }
   subsort Set{N} < Set{M} .
@@ -390,25 +381,25 @@ fmod MYMOD-EXTENDED-CLEAN is
   op f_ : Set{M} -> Set{M} .
 
   var a : M . vars NA NA' : Set{M} .
-  eq f mt         = mt .
-  eq f (NA , NA') = (f NA) , (f NA') .
+  eq f mt       = mt .
+  eq f (NA NA') = (f NA) (f NA') .
 endfm
 
-reduce mt , p , n , m , p .
-reduce f (mt , p , n , m , p) .
+reduce mt p n m p .
+reduce f (mt p n m p) .
 ```
 
 This eliminates many of the advisories Maude gives about operators being
 imported from many places, and has nicer names for all the associated sorts:
 
 ```
-reduce in MYMOD-EXTENDED-CLEAN : p,n,p,m .
+reduce in MYMOD-EXTENDED-CLEAN : p n p m .
 rewrites: 1 in 0ms cpu (0ms real) (~ rewrites/second)
-result NeSet{M}: n,p,m
+result NeSet{M}: n p m
 
-reduce in MYMOD-EXTENDED-CLEAN : f (p,n,p,m) .
+reduce in MYMOD-EXTENDED-CLEAN : f (p n p m) .
 rewrites: 7 in 0ms cpu (0ms real) (~ rewrites/second)
-result NeSet{M}: p,m
+result NeSet{M}: p m
 ```
 
 Where it Breaks Down
@@ -541,4 +532,114 @@ univ MAPPABLE-SET is
     eq map f (NA , NA') = map f NA , map f NA' .
 
 enduniv
+```
+
+Programming Language Constructs
+-------------------------------
+
+```
+univ VAR is
+
+  --- here we use the top element of the sort hierarchy (the kind) to add a
+  --- bottom element! clever!
+  forall:
+    sort A .
+  exists:
+    sort Var{$[A]} .
+    subsort Var{$[A]} < $A .
+
+enduniv
+
+univ CONDITIONAL is
+  protecting BOOL .
+
+  forall:
+    sort A .
+  exists:
+    op if_then_else_fi : Bool $[A] $[A] -> $[A] .
+    vars a1 a2 : $[A] .
+    eq if true  then a1 else a2 fi = a1 .
+    eq if false then a1 else a2 fi = a2 .
+
+enduniv
+
+--- _+_ is parallel composition of universal constructions, __ is sequential
+--- composition, so VAR and CONDITIONAL will both be applied over the original
+--- module, but not over the results of each other, and then the listed
+--- constructions below will be applied sequentially
+
+univ SUBSTITUTION is
+  using VAR + CONDITIONAL .
+
+  forall:
+    sorts A B Var{$[A]} .
+    op f : $A -> $B .
+  exists:
+    sort Subst{$[A]} .
+    op _:=_ : Var{$[A]} $[A] -> Subst{$[A]} .
+    op _[_] : $B Subst{$[A]} -> $[B] .
+    vars va vb : Var{$[A]} . var a : $A .
+    eq $f(va) [vb := a] = if va == vb then $f(a) else $f(va) fi
+
+  (
+  forall:
+    sorts A B C Subst{$[A]} .
+    op _[_] : $B Subst{$[A]} -> $[B] .
+    op f : $B -> $C .
+  exists:
+    op _[_] : $C Subst{$[A]} -> $[C] .
+    var sc : Subst{$[A]} . var b : $B .
+    eq $f(b) [sc] = $f(b[sc]) .
+  )*
+  
+  --- somehow this means to take the closure?
+  --- also, this doesn't push the substitution to *all* children, which it
+  --- should. How to even express that?
+  --- Also, perhaps instead of matching on the operator name, we should add an
+  --- attribute and match on that?
+  --- We could say that the semantics of matching on a sort-name on the
+  --- left-hand side means to *simultaneously* lift through each occurance of
+  --- it. Eg., lifting `f : A C A -> B` through `SET` would give
+  --- `f : Set{A} C Set{A} -> Set{B}`. This actually doesn't make sense for
+  --- anything except `SET`, because (for `LIST`, for example) what order do you
+  --- generate the elements in? Somehow we need more control over the way we
+  --- match operators.
+
+enduniv
+```
+
+Binders/Substitutions
+---------------------
+
+```
+fmod LFORMULA is
+    sorts Var LFormula .
+    
+    ops x y z : -> Var .
+    ops A B C : -> LFormula .
+
+    op -_    : LFormula -> LFormula .
+    op _->_  : LFormula LFormula -> LFormula .
+    op _/\_  : LFormula LFormula -> LFormula .
+    op _\/_  : LFormula LFormula -> LFormula .
+    op _<->_ : LFormula LFormula -> LFormula .
+    op E_._  : Var      LFormula -> LFormula .
+    op A_._  : Var      LFormula -> LFormula .
+
+    vars P Q : LFormula .
+
+    eq P <-> Q = (P -> Q) /\ (Q -> P) .
+
+    op __ : LFormula Subst -> LFormula .
+
+    vars X Y : Var .
+    var T    : LTerm .
+
+    eq (- P) [X := T]     = - (P [X := T]) .
+    eq (P -> Q) [X := T]  = (P [X := T]) -> (Q [X := T]) .
+    eq (P /\ Q) [X := T]  = (P [X := T]) /\ (Q [X := T]) .
+    eq (P \/ Q) [X := T]  = (P [X := T]) \/ (Q [X := T]) .
+    eq (E X . P) [Y := T] = E X . (if X == Y then P else P [Y := T] fi) .
+    eq (A X . P) [Y := T] = A X . (if X == Y then P else P [Y := T] fi) .
+endfm
 ```
