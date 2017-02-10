@@ -3,8 +3,8 @@ title: Universal Constructions in Maude
 geometry: margin=2.5cm
 ---
 
-Working Modules
----------------
+Working Example Module
+----------------------
 
 Throughout we'll use the following module as an example to base our
 transformations on:
@@ -170,11 +170,9 @@ univ SET is
   exists:
     sorts NeSet{$A} Set{$A} .
     subsort $A < NeSet{$A} < Set{$A} .
-    
     op mt : -> Set{$A} .
     op __ : Set{$A}   Set{$A} -> Set{$A}   [ctor assoc comm id: mt prec 99] .
     op __ : NeSet{$A} Set{$A} -> NeSet{$A} [ctor ditto] .
-
     var NA : NeSet{$A} .
     eq NA NA = NA .
 
@@ -185,33 +183,22 @@ univ SET is
   exists:
     subsort NeSet{$A} < NeSet{$B} .
     subsorts Set{$A} < Set{$B} .
-    
+
   --- automatically lift each operator on sort `A` to work on sort `Set{A}`
   --- denote that C D are strings of sorts (possibly \eps) with `sorts*`
+  --- only works with SET because order doesn't matter
   forall:
-    sorts A B .
+    sorts A B Set{$A} Set{$B} NeSet{$A} .
     sorts* C D .
     op f : $C $A $D -> $B .
   exists:
     op $f : $C Set{$A} $C' -> Set{$B} .
-
-    var a : $A . vars NA NA' : NeSet{$A} .
-    var c : $C . var d : $D .
-    eq $f(c, mt, d)       = mt .
-    eq $f(c, (NA NA'), d) = $f(c, NA, d) $f(c, NA', d) .
+    var a : $A . vars NA NA' : NeSet{$A} . var cs : $C . var ds : $D .
+    eq $f(cs, mt, ds)       = mt .
+    eq $f(cs, (NA NA'), ds) = $f(cs, NA, ds) $f(cs, NA', ds) .
 
 enduniv
 ```
-
-Note:
-:   Alternatively, we could assume that universal constructions are applied in
-    order within the `univ ... enduniv` module. I'm not sure what the correct
-    approach for "sequentializing" the constructions is. Notice that in the
-    `SET` construction I'm fully calling out stuff built in the first
-    construction in the second ones `forall` clause to ensure that it already
-    exists before applying the second construction. Perhaps instead we should
-    just assume that they are executed in order. In `SET-MAP`, the
-    `assuming SET` clause forces `SET` to be applied first.
 
 Semantics
 =========
@@ -455,14 +442,129 @@ enduniv
 While the hard work of demonstrating a `view` to `POSET` is left to the user, at
 least the instantiation of two `POSET`s into a single `LEX-PAIR` is automatic.
 
-Extras
-======
+If Then Else
+============
+
+Instead of having `if_then_else_fi` be "magic" using `poly` in Maude, we can
+explicity construct an `if_then_else_if` for each kind.
+
+```
+univ CONDITIONAL is
+  protecting BOOL .
+
+  forall:
+    sort A .
+  exists:
+    op if_then_else_fi : Bool $[A] $[A] -> $[A] .
+    vars a1 a2 : $[A] .
+    eq if true  then a1 else a2 fi = a1 .
+    eq if false then a1 else a2 fi = a2 .
+
+enduniv
+```
+
+Symbolic Terms
+==============
+
+We want to be able to put variables anywhere into our terms, so for each sort
+`A` we declare a subsort `Var{A}`. We also complete the `Var` heirarchy with a
+bottom element, so that if you don't care what sort of variable you're using you
+can use that sort.
+
+```
+univ VAR is
+
+  forall:
+    sort A .
+  exists:
+    sorts Var{$A} Var{$[A]} .
+    subsorts Var{$[A]} < Var{$A} < $A .
+
+  forall:
+    sorts A B Var{$A} Var{$B} .
+    subsort $A < $B .
+  exists:
+    subsort Var{$A} < Var{$B} .
+
+enduniv
+```
+
+Now you might want to be able to distinguish at the sort level that a term is
+ground (does not contain variables). To do so, we make a subsort `Ground{A}` of
+each sort `A`, with all the operators copied down to operate over `Ground{A}` as
+well. This allows equational simplification to happen over terms and terms with
+variables, but allows sort-level distinction of terms without variables.
+
+```
+univ GROUND is
+
+  forall:
+    sort A .
+  exists:
+    sort Ground{$A} .
+    subsort Ground{$A} < $A .
+
+  forall:
+    sorts A B Ground{$A} Ground{$B} .
+    subsort A < B .
+  exists:
+    subsort Ground{$A} < Ground{$B} .
+
+  forall:
+    sort* A .
+    sort B .
+    op f : $A -> $B .
+  exists:
+    op f : Ground{$A} -> Ground{$B} .
+
+enduniv
+```
+
+Finally, you may want to be able to perform substitutions of variables for
+terms. To do so, we define the substitution homomorphism over all terms of sort
+`A` which may have variables in them. This requires that `VAR` and `CONDITIONAL`
+are defined over the sort-heirarchy of interest.
+
+```
+univ SUBSTITUTION is
+  using VAR + CONDITIONAL .
+
+  forall:
+    sorts A Var{$A} .
+  exists:
+    sort Subst{$A} .
+    op _:=_ : Var{$A} $A -> Subst{$A} .
+    op _[_] : $A Subst{$A} -> $A .
+    vars va1 va2 : Var{$A} . var a : $A .
+    eq va1 [va2 := a] = if va1 == va2 then a else va1 fi .
+
+  forall:
+    sorts A B Subst{$A} Subst{$B} .
+    subsort A < B .
+  exists:
+    subsort Subst{$A} < Subst{$B} .
+
+  forall:
+    sort* A .
+    sorts B C Subst{$C} .
+    op f : $A -> $B .
+  exists:
+    op _[_] : $B Subst{$C} -> $B .
+    var as : $A . var sc : Subst{$C} .
+    eq $f(as)[sc] = $f(as[sc]) .
+
+enduniv
+```
 
 Functions
----------
+=========
+
+Here we define functions between one sort heirarchy any another, including
+appropriate sub-sorting relations (contravariant on domain, covariant on range).
 
 ```
 univ FUNCTION is
+  using SUBSTITUTION .
 
   --- function sorts
   forall:
@@ -472,53 +574,48 @@ univ FUNCTION is
     op __ : $A=>$B $A -> [$B] .
 
   forall:
+    sorts A B C .
+    subsort $A < $B .
+  exists:
+    subsort $C=>$A < $C=>$B .
+    subsort $B=>$C < $A=>$C .
+
+  forall:
     sort A .
   exists:
     op id : -> $A=>$A .
     var a : $A .
     eq id a = a .
-    
-  --- (beginnings of) lambda abstraction
-  forall:
-    sorts A B .
-    op f : A -> B .
-  exists:
-    sort Var{$A} .
-    op $f : -> $A=>$B .
-    var A : $A .
-    eq $f A = $f(A) .
 
   forall:
     sorts A B C .
   exists:
     op _._ : $B=>$C $A=>$B -> $A=>$C .
-
     var f : $B=>$C . var g : $A=>$B . var A : $A .
-
     eq id . g = g .
     eq f . id = f .
     eq (f . g) A = f(g(A)) .
 
+  --- lambda abstraction
+  --- using Ground{$A} to avoid variable capture
+  --- eventually would like to lift this restriction
   forall:
-    sorts A B C .
-    subsort A < B .
+    sorts A B .
+    sorts Var{$A} Subst{$A} Ground{$A} $A=>$B .
   exists:
-    subsort $C=>$A < $C=>$B .
-    subsort $B=>$C < $A=>$C .
+    op \_._ : Var{$A} $B -> $A=>$B .
+    var ga : Ground{$A} . var va : Var{$A} . var b : $B .
+    eq (\ va . b) ga = b [va := ga] .
 
 enduniv
 ```
-
-Mappable Sets
--------------
 
 Here we define an explicit `map` function for sets instead of generating an
 implicit operator over sets for ever operator over the base sorts.
 
 ```
 univ MAPPABLE-SET is
-  extending SET .
-  extending FUNCTION .
+  using SET + FUNCTION .
 
   forall:
     sorts A B .
@@ -532,114 +629,4 @@ univ MAPPABLE-SET is
     eq map f (NA , NA') = map f NA , map f NA' .
 
 enduniv
-```
-
-Programming Language Constructs
--------------------------------
-
-```
-univ VAR is
-
-  --- here we use the top element of the sort hierarchy (the kind) to add a
-  --- bottom element! clever!
-  forall:
-    sort A .
-  exists:
-    sort Var{$[A]} .
-    subsort Var{$[A]} < $A .
-
-enduniv
-
-univ CONDITIONAL is
-  protecting BOOL .
-
-  forall:
-    sort A .
-  exists:
-    op if_then_else_fi : Bool $[A] $[A] -> $[A] .
-    vars a1 a2 : $[A] .
-    eq if true  then a1 else a2 fi = a1 .
-    eq if false then a1 else a2 fi = a2 .
-
-enduniv
-
---- _+_ is parallel composition of universal constructions, __ is sequential
---- composition, so VAR and CONDITIONAL will both be applied over the original
---- module, but not over the results of each other, and then the listed
---- constructions below will be applied sequentially
-
-univ SUBSTITUTION is
-  using VAR + CONDITIONAL .
-
-  forall:
-    sorts A B Var{$[A]} .
-    op f : $A -> $B .
-  exists:
-    sort Subst{$[A]} .
-    op _:=_ : Var{$[A]} $[A] -> Subst{$[A]} .
-    op _[_] : $B Subst{$[A]} -> $[B] .
-    vars va vb : Var{$[A]} . var a : $A .
-    eq $f(va) [vb := a] = if va == vb then $f(a) else $f(va) fi
-
-  (
-  forall:
-    sorts A B C Subst{$[A]} .
-    op _[_] : $B Subst{$[A]} -> $[B] .
-    op f : $B -> $C .
-  exists:
-    op _[_] : $C Subst{$[A]} -> $[C] .
-    var sc : Subst{$[A]} . var b : $B .
-    eq $f(b) [sc] = $f(b[sc]) .
-  )*
-  
-  --- somehow this means to take the closure?
-  --- also, this doesn't push the substitution to *all* children, which it
-  --- should. How to even express that?
-  --- Also, perhaps instead of matching on the operator name, we should add an
-  --- attribute and match on that?
-  --- We could say that the semantics of matching on a sort-name on the
-  --- left-hand side means to *simultaneously* lift through each occurance of
-  --- it. Eg., lifting `f : A C A -> B` through `SET` would give
-  --- `f : Set{A} C Set{A} -> Set{B}`. This actually doesn't make sense for
-  --- anything except `SET`, because (for `LIST`, for example) what order do you
-  --- generate the elements in? Somehow we need more control over the way we
-  --- match operators.
-
-enduniv
-```
-
-Binders/Substitutions
----------------------
-
-```
-fmod LFORMULA is
-    sorts Var LFormula .
-    
-    ops x y z : -> Var .
-    ops A B C : -> LFormula .
-
-    op -_    : LFormula -> LFormula .
-    op _->_  : LFormula LFormula -> LFormula .
-    op _/\_  : LFormula LFormula -> LFormula .
-    op _\/_  : LFormula LFormula -> LFormula .
-    op _<->_ : LFormula LFormula -> LFormula .
-    op E_._  : Var      LFormula -> LFormula .
-    op A_._  : Var      LFormula -> LFormula .
-
-    vars P Q : LFormula .
-
-    eq P <-> Q = (P -> Q) /\ (Q -> P) .
-
-    op __ : LFormula Subst -> LFormula .
-
-    vars X Y : Var .
-    var T    : LTerm .
-
-    eq (- P) [X := T]     = - (P [X := T]) .
-    eq (P -> Q) [X := T]  = (P [X := T]) -> (Q [X := T]) .
-    eq (P /\ Q) [X := T]  = (P [X := T]) /\ (Q [X := T]) .
-    eq (P \/ Q) [X := T]  = (P [X := T]) \/ (Q [X := T]) .
-    eq (E X . P) [Y := T] = E X . (if X == Y then P else P [Y := T] fi) .
-    eq (A X . P) [Y := T] = A X . (if X == Y then P else P [Y := T] fi) .
-endfm
 ```
