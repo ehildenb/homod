@@ -527,22 +527,24 @@ are defined over the sort-heirarchy of interest.
 
 ```
 univ SUBSTITUTION is
-  using VAR + CONDITIONAL .
+  using VAR + GROUND + CONDITIONAL .
 
   forall:
-    sorts A Var{$A} .
+    sorts A Ground{$A} Var{$A} .
   exists:
-    sort Subst{$A} .
+    sorts Subst{$A} GroundSubst{$A} .
+    subsort GroundSubst{$A} < Subst{$A} .
     op _:=_ : Var{$A} $A -> Subst{$A} .
     op _[_] : Var{$A} Subst{$A} -> $A .
     vars va1 va2 : Var{$A} . var a : $A .
     eq va1 [va2 := a] = if va1 == va2 then a else va1 fi .
 
   forall:
-    sorts A B Subst{$A} Subst{$B} .
+    sorts A B Subst{$A} Subst{$B} GroundSubst{$A} GroundSubst{$B} .
     subsort A < B .
   exists:
     subsort Subst{$A} < Subst{$B} .
+    subsort GroundSubst{$A} < GroundSubst{$B} .
 
   forall:
     sort* A .
@@ -553,6 +555,23 @@ univ SUBSTITUTION is
     var as : $A . var sc : Subst{$C} . var gb : Ground{$B} .
     eq gb[sc] = gb .
     eq $f(as)[sc] = $f(as[sc]) .
+
+enduniv
+```
+
+Many programmers would also like `let ... in ...` clauses. Here we allow that
+for ground bindings in the first argument (only ground substitutions):
+
+```
+univ LET-EXPRESSION is
+  using SUBSTITUTION .
+
+  forall:
+    sorts A B GroundSubst{$A} .
+  exists:
+    op let_in_ : GroundSubst{$A} $B -> $B .
+    var gsa : GroundSubst{$A} . var b : $B .
+    eq let gsa in b = b [gsa] .
 
 enduniv
 ```
