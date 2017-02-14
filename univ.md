@@ -680,13 +680,18 @@ univ FUNCTION is
   --- lambda abstraction
   --- using Ground{$A} to avoid variable capture
   --- eventually would like to lift this restriction
+  --- also note that we extend substitutions to propagate through the lambda
   forall:
-    sorts A B .
-    sorts Var{$A} Subst{$A} Ground{$A} $A=>$B .
+    sorts A B C .
+    sorts Var{$A} Ground{$A} Subst{$A} .
+    sorts $A=>$B Subst{$C} .
   exists:
     op \_._ : Var{$A} $B -> $A=>$B .
-    var ga : Ground{$A} . var va : Var{$A} . var b : $B .
+    --------------------------------
+    var ga : Ground{$A} . vars va va1 va2 : Var{$A} . var b : $B . var sc : Subst {$C} .
     eq (\ va . b) ga = b [va := ga] .
+    eq (\ va1 . b) [va2 := a] = \ va1 . if va1 == va2 then b else b [va2 := a] fi .
+    eq (\ va1 . b) [sc] = \ va1 . (b [sc]) [owise] .
 
 enduniv
 ```
