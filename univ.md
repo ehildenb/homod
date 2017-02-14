@@ -163,6 +163,7 @@ ensure that other parts exsit (the `exists`).
 
 ```
 univ SET is
+   protecting BOOL .
 
   --- Maude's normal notion of `SET{A}`, for `A` a view to `TRIV`
   forall:
@@ -170,11 +171,19 @@ univ SET is
   exists:
     sorts NeSet{$A} Set{$A} .
     subsort $A < NeSet{$A} < Set{$A} .
+
     op mt : -> Set{$A} .
-    op __ : Set{$A}   Set{$A} -> Set{$A}   [ctor assoc comm id: mt prec 99] .
+    op __ : Set{$A}   Set{$A} -> Set{$A}   [ctor assoc comm id: mt prec 75] .
     op __ : NeSet{$A} Set{$A} -> NeSet{$A} [ctor ditto] .
-    var NA : NeSet{$A} .
-    eq NA NA = NA .
+    -----------------------------------------------------
+    var nsa : NeSet{$A} .
+    eq nsa nsa = nsa .
+
+    op _in_ : $A Set{$A} -> Bool [prec 80].
+    ---------------------------------------
+    var a : $A . var sa : Set{$A} .
+    eq a in a sa = true .
+    eq a in sa   = false [owise] .
 
   --- automatic subsort generation over new sorts
   forall:
@@ -193,6 +202,7 @@ univ SET is
     op f : $C $A $D -> $B .
   exists:
     op $f : $C Set{$A} $C' -> Set{$B} .
+    -----------------------------------
     var a : $A . vars NA NA' : NeSet{$A} . var cs : $C . var ds : $D .
     eq $f(cs, mt, ds)       = mt .
     eq $f(cs, (NA NA'), ds) = $f(cs, NA, ds) $f(cs, NA', ds) .
@@ -302,7 +312,6 @@ result Set{SET-1-M}: n p m
 Syntactic Transformation
 ------------------------
 
-
 Here we see that `n , p , m` has sort `Set{SET-1-M}`, where we would actually
 like it to have sort `Set{M}` for readability and ease-of-use. It's not clear
 that simpler names could easily be generated, especially when intermediate
@@ -389,8 +398,8 @@ rewrites: 7 in 0ms cpu (0ms real) (~ rewrites/second)
 result NeSet{M}: p m
 ```
 
-Where it Breaks Down
-====================
+Theories with Equational Constraints
+------------------------------------
 
 Some views are more involved (eg. sending theory operators to derived terms), or
 may have complicated proof obligations (which are not syntactically checkable or
@@ -425,13 +434,12 @@ univ LEX-PAIR is
     view X from POSET .
     view Y from POSET .
   exists:
-    sort Pair{$X,$Y} .
-    op <_;_> : $(X.Elt) $(Y.Elt) -> Pair{$X,$Y} .
-    op _<_ : Pair{$X,$Y} Pair{$X,$Y} -> Bool .
-    op 1st : Pair{$X,$Y} -> $(X.Elt) .
-    op 2nd : Pair{$X,$Y} -> $(Y.Elt) .
-    vars A A’ : $(X.Elt) .
-    vars B B’ : $(Y.Elt) .
+    sort ($X.Elt,$Y.Elt) .
+    op <_;_> : $X.Elt $Y.Elt -> ($X.Elt,$Y.Elt) .
+    op _<_ : ($X.Elt,$Y.Elt) ($X,$Y) -> Bool .
+    op 1st : ($X.Elt,$Y.Elt) -> $X.Elt .
+    op 2nd : ($X.Elt,$Y.Elt) -> $Y.Elt .
+    vars A A' : $X.Elt . vars B B' : $Y.Elt .
     eq 1st(< A ; B >) = A .
     eq 2nd(< A ; B >) = B .
     eq < A ; B > < < A’ ; B’ > = (A < A’) or (A == A’ and B < B’) .
@@ -442,8 +450,36 @@ enduniv
 While the hard work of demonstrating a `view` to `POSET` is left to the user, at
 least the instantiation of two `POSET`s into a single `LEX-PAIR` is automatic.
 
+TODO: How could we then say that `LEX-PAIR` also is a `POSET`? Can we lift
+theories through universal constructions somehow?
+
+Examples
+========
+
+Tuples
+------
+
+We want tuple-types.
+
+```
+univ TUPLE is
+
+  forall:
+    sorts A B .
+  exists:
+    sort <$A;$B> .
+    op <_;_> : $A $B -> <$A;$B> [ctor] .
+    op p1 : <$A;$B> -> $A .
+    op p2 : <$A;$B> -> $B .
+    var A : $A . var B : $B .
+    eq p1(< A ; B >)= A .
+    eq p2(< A ; B >)= B .
+
+enduniv
+```
+
 If Then Else
-============
+------------
 
 Instead of having `if_then_else_fi` be "magic" using `poly` in Maude, we can
 explicity construct an `if_then_else_if` for each kind.
@@ -464,7 +500,7 @@ enduniv
 ```
 
 Symbolic Terms
-==============
+--------------
 
 We want to be able to put variables anywhere into our terms, so for each sort
 `A` we declare a subsort `Var{A}`. We also complete the `Var` heirarchy with a
@@ -520,14 +556,19 @@ univ GROUND is
 enduniv
 ```
 
-Finally, you may want to be able to perform substitutions of variables for
-terms. To do so, we define the substitution homomorphism over all terms of sort
-`A` which may have variables in them. This requires that `VAR` and `CONDITIONAL`
-are defined over the sort-heirarchy of interest.
+Substitutions
+-------------
+
+### Binder Unaware
+
+You may want to be able to perform substitutions of variables for terms. To do
+so, we define the substitution homomorphism over all terms of sort `A` which may
+have variables in them. This requires that `VAR` and `CONDITIONAL` are defined
+over the sort-heirarchy of interest.
 
 ```
 univ SUBSTITUTION is
-  using VAR + GROUND + CONDITIONAL .
+  using (VAR ; CONDITIONAL) | GROUND .
 
   forall:
     sorts A Ground{$A} Var{$A} .
@@ -548,7 +589,7 @@ univ SUBSTITUTION is
 
   forall:
     sort* A .
-    sorts B C Subst{$C} Ground{$B} .
+    sorts B C Ground{$B} Subst{$C} .
     op f : $A -> $B .
   exists:
     op _[_] : $B Subst{$C} -> $B .
@@ -558,6 +599,26 @@ univ SUBSTITUTION is
 
 enduniv
 ```
+
+### Binder Aware
+
+```
+univ BINDER is
+  using SUBSTITUTION | (VAR => SET) .
+
+  forall:
+    sorts A B Set{Var{$A}} .
+    sort* C .
+    op f : Set{Var{$A}} $C -> $B [binder] .
+  exists:
+    op __._ : Binder{$A} Set{Var{$A}} C => 
+    var ba : Binder{$A} . var c : $C .
+
+enduniv
+```
+
+Let Expressions
+---------------
 
 Many programmers would also like `let ... in ...` clauses. Here we allow that
 for ground bindings in the first argument (only ground substitutions):
@@ -577,7 +638,7 @@ enduniv
 ```
 
 Functions
-=========
+---------
 
 Here we define functions between one sort heirarchy any another, including
 appropriate sub-sorting relations (contravariant on domain, covariant on range).
@@ -626,27 +687,6 @@ univ FUNCTION is
     op \_._ : Var{$A} $B -> $A=>$B .
     var ga : Ground{$A} . var va : Var{$A} . var b : $B .
     eq (\ va . b) ga = b [va := ga] .
-
-enduniv
-```
-
-Here we define an explicit `map` function for sets instead of generating an
-implicit operator over sets for ever operator over the base sorts.
-
-```
-univ MAPPABLE-SET is
-  using SET + FUNCTION .
-
-  forall:
-    sorts A B .
-  exists:
-    op map__ : $A=>$B Set{$A} -> Set{$B} .
-
-    var f : $A=>$B . var A : $A . vars NA NA' : NeSet{$A} .
-
-    eq map f A          = f A .
-    eq map f mt         = mt .
-    eq map f (NA , NA') = map f NA , map f NA' .
 
 enduniv
 ```
