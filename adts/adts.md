@@ -29,6 +29,7 @@ instance (Eq d, Eq (n (Term n d))) => Eq (Term n d) where
 
 class Functor n => Reduce n d where
     reduce :: Term n d -> Term n d
+
     reduceAll :: Term n d -> Term n d
     reduceAll (Node n) = reduce $ Node (fmap reduceAll n)
     reduceAll d        = reduce d
@@ -79,8 +80,50 @@ Example Algebras
 We have to make the algebras instance of `Functor`. This makes sure that we can
 traverse over the resulting `Term`.
 
-A free Ring on the underlying data
-----------------------------------
+Naturals
+--------
+
+```haskell
+data SNat a = Z
+            | S a
+            | P a a
+            | T a a
+            deriving (Show, Eq)
+
+instance Functor SNat where
+    fmap f (Z)   = Z
+    fmap f (S a) = S (f a)
+
+type SNatInt = Term SNat IntData
+
+z :: SNatInt
+z = Node Z
+--- alternatively z = int 0
+
+s :: SNatInt -> SNatInt
+s n = Node (S n)
+
+pn :: Integer -> SNatInt
+pn 0         = z
+pn n | n > 0 = s $ pn (n - 1)
+
+p :: SNatInt -> SNatInt -> SNatInt
+p (Node (S x)) y = Node (S (p x y))
+p (Node Z)     y = y
+
+t :: SNatInt -> SNatInt -> SNatInt
+t (Node (S x)) y = p (t x y) y
+t (Node Z)     y = z
+
+instance Reduce SNat IntData where
+    reduce (Node Z)       = z
+    reduce (Node (S a))   = s a
+    reduce (Node (P a b)) = p a b
+    reduce (Node (T a b)) = t a b
+```
+
+A free Ring over `IntData`
+--------------------------
 
 ```haskell
 data Ring a = Neg   a
@@ -165,39 +208,6 @@ instance Functor ITE where
 
 --- ite :: Bool -> RingInt -> RingInt -> RingInt
 --- ite b i1 i2 = Node (ITE b i1 i2)
-```
-
-The Peano naturals
-------------------
-
-```haskell
-data Peano a = Z
-             | S a
-             deriving (Show, Eq)
-
-instance Functor Peano where
-    fmap f (Z)   = Z
-    fmap f (S a) = S (f a)
-
-type PeanoNat = Term Peano IntData
-
-z :: PeanoNat
-z = Node Z
-
-s :: PeanoNat -> PeanoNat
-s n = Node (S n)
-
-pn :: Integer -> PeanoNat
-pn 0         = z
-pn n | n > 0 = s $ pn (n - 1)
-
-pplus :: PeanoNat -> PeanoNat -> PeanoNat
-pplus (Node (S x)) y = Node (S (pplus x y))
-pplus (Node Z)     y = y
-
-ptimes :: PeanoNat -> PeanoNat -> PeanoNat
-ptimes (Node (S x)) y = pplus (ptimes x y) y
-ptimes (Node Z)     y = z
 ```
 
 Sets
