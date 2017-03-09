@@ -1,0 +1,295 @@
+--- Working Example Module
+--- ----------------------
+
+--- Throughout we'll use the following module as an example to base our
+--- transformations on:
+
+
+fmod MYMOD is
+  sorts M N P .
+  subsorts N P < M .
+  op n : -> N .
+  op p : -> P .
+  op m : -> M .
+  
+  op f_ : M -> M .
+  eq f n = p .
+  eq f m = m .
+  eq f p = p .
+endfm
+
+
+--- Sets in Maude
+--- =============
+
+--- Using a combination of theories, parameterized modules, and views, we can define
+--- sets over the sorts in `MYMOD`. We start with a `TRIV` theory, a parameterized
+--- `SET` module (taking a `TRIV` parameter), and views from `TRIV` to each sort in
+--- `MYMOD`:
+
+
+fth TRIV is sort Elt . endfth
+
+fmod SET{X :: TRIV} is
+  sorts NeSet{X} Set{X} .
+  subsort X$Elt < NeSet{X} < Set{X} .
+
+  op mt  : -> Set{X} .
+
+  op __ : NeSet{X} Set{X} -> NeSet{X} [ctor assoc comm id: mt prec 99] .
+  op __ : Set{X}   Set{X} -> Set{X}   [ctor ditto] .
+
+  var N : NeSet{X} .
+  eq N N = N .
+endfm
+
+view M from TRIV to MYMOD is sort Elt to M . endv
+view N from TRIV to MYMOD is sort Elt to N . endv
+view P from TRIV to MYMOD is sort Elt to P . endv
+
+
+--- Finally we create a module which extends the parameterized modules with the
+--- appropriate views:
+
+
+fmod MYMOD-SET is
+  extending SET{M} + SET{N} + SET{P} .
+endfm
+
+
+--- However, this is problematic because we don't have the (often-wanted) mirrored
+--- subsort structure. To fix this, the user manually specifies the desired
+--- subsorts:
+
+
+fmod MYMOD-SET-SUBSORT is
+  extending MYMOD-SET .
+
+  subsort Set{N} < Set{M} .
+  subsort Set{P} < Set{M} .
+endfm
+
+reduce n p .
+
+
+--- Now, if we want to change the sort structure of `MYMOD`, we have to change it in
+--- two places! Obviously this is not good for maintainability. Additionally, as
+--- shown above, we are failing pre-regularity checks. Not shown here are the many
+--- advisories Maude gives about `mt` and `_,_` being imported from multiple places.
+
+--- So we can make a `SUBSORT` theory, and a `SET-SUBSORT` parameterized module
+--- which is "subsort aware":
+
+
+fth SUBSORT is
+  sorts A B .
+  subsort A < B .
+endfth
+
+fmod SET-SUBSORT{X :: SUBSORT} is
+  sorts SetA{X} SetB{X} NeSetA{X} NeSetB{X} .
+  subsort X$A < NeSetA{X} < SetA{X} .
+  subsort X$B < NeSetB{X} < SetB{X} .
+  subsort SetA{X} < SetB{X} .
+
+  op mt  : -> SetA{X} .
+  op mt  : -> SetB{X} .
+
+  op __ : NeSetA{X} SetA{X} -> NeSetA{X} [ctor assoc comm id: mt prec 99] .
+  op __ : NeSetB{X} SetB{X} -> NeSetB{X} [ctor assoc comm id: mt prec 99] .
+  
+  op __ : SetA{X} SetA{X} -> SetA{X} [ctor ditto] .
+  op __ : SetB{X} SetB{X} -> SetB{X} [ctor ditto] .
+
+  var NA : NeSetA{X} .
+  eq NA NA = NA .
+  
+  var NB : NeSetB{X} .
+  eq NB NB = NB .
+endfm
+
+view N<M from SUBSORT to MYMOD is sort A to N . sort B to M . endv
+view P<M from SUBSORT to MYMOD is sort A to P . sort B to M . endv
+
+fmod MYMOD-SET-SUBSORT-2 is
+  extending SET-SUBSORT{N<M} + SET-SUBSORT{P<M} .
+endfm
+
+reduce n p .
+
+
+--- This fails pre-regularity checks as well, and has a slightly more convoluted
+--- sort as output. Additionally, if we had a module with *no* subsorts (eg. a
+--- many-sorted module), we would *not* be able to use this approach to construct
+--- sets, because there would be no view to `SUBSORT` possible.
+
+--- Semantics
+--- =========
+
+--- Here we'll give "semantics by example", as actual semantics aren't fleshed out.
+--- Two options are provided: (i) desugaring into Maude's theories,
+--- parameterized-modules, and views; (ii) syntactic transformation on the original
+--- definition.
+
+--- As Theories/Parameterized-Modules/Views
+--- ---------------------------------------
+
+--- First we apply the transformation described by the first part of the universal
+--- construction. Notice that the universal part (`forall: ...`) corresponds to a
+--- functional theory, and the existential part (`exists: ...`) corresponds to a
+--- parameterized-module (as you would expect given the initial/free semantics
+--- respectively).
+
+
+fth SET-THEORY-1 is
+  sort A .
+endfth
+
+fmod SET-MODULE-1{X :: SET-THEORY-1} is
+  sorts Set{X} NeSet{X} .
+  subsort X$A < NeSet{X} < Set{X} .
+  op mt : -> Set{X} .
+  op __ : Set{X} Set{X} -> Set{X} [ctor assoc comm id: mt prec 99] .
+  op __ : Set{X} NeSet{X} -> NeSet{X} [ctor ditto] .
+  var a : NeSet{X} .
+  eq a a = a .
+endfm
+
+
+--- Intermediate views and a module are generated:
+
+
+view SET-1-M from SET-THEORY-1 to MYMOD is sort A to M . endv
+view SET-1-N from SET-THEORY-1 to MYMOD is sort A to N . endv
+view SET-1-P from SET-THEORY-1 to MYMOD is sort A to P . endv
+  
+fmod MYMOD-EXTENDED-1 is
+  protecting MYMOD .
+  protecting   SET-MODULE-1{SET-1-M}
+             + SET-MODULE-1{SET-1-N}
+             + SET-MODULE-1{SET-1-P} . 
+endfm
+
+
+--- Then the next theory is generated:
+
+
+fth SET-THEORY-2 is
+  sorts A B Set{A} Set{B} NeSet{A} NeSet{B} .
+  subsort A < B .
+endfth
+
+fmod SET-MODULE-2{X :: SET-THEORY-2} is
+  subsort X$Set{A} < X$Set{B} .
+  subsort X$NeSet{A} < X$NeSet{B} .
+endfm
+
+
+--- And finally we generate the appropriate views (from the second theory into the
+--- intermediate generated module), along with the final module:
+
+
+view MYMOD-N-M from SET-THEORY-2 to MYMOD-EXTENDED-1 is
+  sort A to N . sort Set{A} to Set{SET-1-N} . sort NeSet{A} to NeSet{SET-1-N} .
+  sort B to M . sort Set{B} to Set{SET-1-M} . sort NeSet{B} to NeSet{SET-1-M} .
+endv
+
+view MYMOD-P-M from SET-THEORY-2 to MYMOD-EXTENDED-1 is
+  sort A to P . sort Set{A} to Set{SET-1-P} . sort NeSet{A} to NeSet{SET-1-P} .
+  sort B to M . sort Set{B} to Set{SET-1-M} . sort NeSet{B} to NeSet{SET-1-M} .
+endv
+
+fmod MYMOD-EXTENDED is
+  protecting MYMOD-EXTENDED-1 .
+  protecting   SET-MODULE-2{MYMOD-N-M}
+             + SET-MODULE-2{MYMOD-P-M} .
+endfm
+
+reduce mt p n m p .
+
+
+--- So we see that the universal clause `forall` represents the *loose* semantics of
+--- a functional theory, and the `exists` clause represents the *free* semantics
+--- over the variables declared in the preceding theory.
+
+--- Unfortunately, the resulting module `MYMOD-EXTENDED` has strange names for
+--- everything that has been generated, for example:
+
+--- Syntactic Transformation
+--- ------------------------
+
+--- Here we see that `n , p , m` has sort `Set{SET-1-M}`, where we would actually
+--- like it to have sort `Set{M}` for readability and ease-of-use. It's not clear
+--- that simpler names could easily be generated, especially when intermediate
+--- modules/views/theories are needed. If instead the semantics are given in terms
+--- of a definition transformation, the whole issue of cluttering name-spaces is
+--- avoided. Intuitively, the module `MYMOD` is extended to:
+
+
+fmod MYMOD-EXTENDED-CLEAN is
+  sorts M N P .
+  subsorts N P < M .
+  op n : -> N .
+  op p : -> P .
+  op m : -> M .
+  
+  op f_ : M -> M .
+  eq f n = p .
+  eq f m = m .
+  eq f p = p .
+
+  --- first construction with { A |-> M }
+  sorts NeSet{M} Set{M} .
+  subsort M < NeSet{M} < Set{M} .
+  
+  op mt  : -> Set{M} .
+  op __ : Set{M}   Set{M} -> Set{M}   [ctor assoc comm id: mt prec 99] .
+  op __ : NeSet{M} Set{M} -> NeSet{M} [ctor ditto] .
+  
+  var NA1 : NeSet{M} .
+  eq NA1 NA1 = NA1 .
+
+  --- first construction with { A |-> N }
+  sorts NeSet{N} Set{N} .
+  subsort N < NeSet{N} < Set{N} .
+  
+  op mt  : -> Set{N} .
+  op __ : Set{N}   Set{N} -> Set{N}   [ctor assoc comm id: mt prec 99] .
+  op __ : NeSet{N} Set{N} -> NeSet{N} [ctor ditto] .
+  
+  var NA2 : NeSet{N} .
+  eq NA2 NA2 = NA2 .
+
+  --- first construction with { A |-> P }
+  sorts NeSet{P} Set{P} .
+  subsort P < NeSet{P} < Set{P} .
+  
+  op mt  : -> Set{P} .
+  op __ : Set{P}   Set{P} -> Set{P}   [ctor assoc comm id: mt prec 99] .
+  op __ : NeSet{P} Set{P} -> NeSet{P} [ctor ditto] .
+  
+  var NA3 : NeSet{P} .
+  eq NA3 NA3 = NA3 .
+  
+  --- second construction with { A |-> N , B |-> M }
+  subsort Set{N} < Set{M} .
+  subsort NeSet{N} < NeSet{M} .
+
+  --- second construction with { A |-> P , B |-> M }
+  subsort Set{P} < Set{M} .
+  subsort NeSet{P} < NeSet{M} .
+  
+  --- third construction with { A |-> M , B |-> M , f |-> f_ }
+  op f_ : Set{M} -> Set{M} .
+
+  var a : M . vars NA NA' : Set{M} .
+  eq f mt       = mt .
+  eq f (NA NA') = (f NA) (f NA') .
+endfm
+
+reduce mt p n m p .
+reduce f (mt p n m p) .
+
+
+--- This eliminates many of the advisories Maude gives about operators being
+--- imported from many places, and has nicer names for all the associated sorts:

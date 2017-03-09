@@ -556,6 +556,25 @@ univ GROUND is
 enduniv
 ```
 
+```
+univ CONSTRAINED-TERM is
+  using VAR | GROUND .
+  protecting BOOL => VAR .
+
+  forall:
+    sorts A Var{$A} Ground{$A} .
+  exists:
+    op _|_ : $A Bool -> $A [right id: true] .
+    var ga : Ground{$A} . var c : Bool .
+    eq ga | c = ga .
+
+enduniv
+
+univ SYMBOLIC-STATE is
+  using CONSTRAINED-TERM => SET .
+enduniv
+```
+
 Substitutions
 -------------
 

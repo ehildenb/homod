@@ -1,0 +1,4 @@
+#!/usr/bin/env zsh
+
+pandoc-tangle --from markdown --to code-haskell --code haskell \
+              adts.md > adts.hs
