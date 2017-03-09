@@ -1,4 +1,6 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GADTs #-}
 
 
@@ -24,6 +26,12 @@ instance (Eq d, Eq (n (Term n d))) => Eq (Term n d) where
     Node n == Node n' = n == n'
     _      == _       = False
 
+class Functor n => Reduce n d where
+    reduce :: Term n d -> Term n d
+    reduceAll :: Term n d -> Term n d
+    reduceAll (Node n) = reduce $ Node (fmap reduceAll n)
+    reduceAll d        = reduce d
+
 
 --- Data
 --- ----
@@ -45,11 +53,24 @@ data IntData = V String
              deriving Eq
 
 instance Show IntData where
-    show (V s) = "var(" ++ s ++ ")"
+    show (V s) = show s
     show (I i) = show i
+
+int :: Int -> Term n IntData
+int = Data . I
+
+var :: String -> Term n IntData
+var = Data . V
 
 
 --- Here we have a particular substitution.
+
+
+subst :: IntData -> Term a IntData
+subst (V "x") = Data (I 3)
+subst (V "y") = Data (I 2)
+subst intData = Data intData
+
 
 --- Example Algebras
 --- ================
@@ -61,8 +82,8 @@ instance Show IntData where
 --- ----------------------------------
 
 
-data Ring a = Plus  a a
-            | Minus a a
+data Ring a = Neg   a
+            | Plus  a a
             | Times a a
             | Zero
             | One
@@ -70,7 +91,7 @@ data Ring a = Plus  a a
 
 instance Functor Ring where
     fmap f (Plus  a b) = Plus  (f a) (f b)
-    fmap f (Minus a b) = Minus (f a) (f b)
+    fmap f (Neg a)     = Neg (f a)
     fmap f (Times a b) = Times (f a) (f b)
     fmap f (Zero)      = Zero
     fmap f (One)       = One
@@ -80,29 +101,56 @@ instance Functor Ring where
 --- nicer to build a `Ring` and potentially perform some simplification of the
 --- resulting `Ring`.
 
+--- Here, I've built some simplification into the operators. Multiplication is
+--- distributed, and variables are gathers to the right (integer to the left).
+--- Negatives propagate inward.
+
 
 type RingInt = Term Ring IntData
 
 zero :: RingInt
-zero = Node Zero
+zero = int 0
 
 one :: RingInt
-one = Node One
+one = int 1
+
+neg :: RingInt -> RingInt
+neg (Data (I i))       = Data (I (- i))
+neg (Data (V i))       = Node $ Neg (Data (V i))
+neg (Node (Plus a b))  = Node $ Plus (neg a) (neg b)
+neg (Node (Times a b)) = Node $ Times (neg a) b
+neg a                  = Node $ Neg a
 
 plus :: RingInt -> RingInt -> RingInt
-plus a b = Node (Plus a b)
-
-minus :: RingInt -> RingInt -> RingInt
-minus a b = Node (Minus a b)
+plus (Node Zero)         b                 = b
+plus a                   (Node Zero)       = plus zero a
+plus (Node One)          (Data (I i))      = int (i + 1)
+plus a                   (Node One)        = plus one a
+plus (Data (I i1))       (Data (I i2))     = int (i1 + i2)
+plus a@(Data (V _))      (Node (Plus b c)) = plus b (plus a c)
+plus a                   (Node (Plus b c)) = plus (plus a b) c
+--- plus p@(Node (Plus _ _)) b                 = plus b p
+plus a                   b                 = Node $ Plus a b
 
 times :: RingInt -> RingInt -> RingInt
-times a b = Node (Times a b)
+times (Node Zero)          b                  = zero
+times a                    (Node Zero)        = times zero a
+times (Node One)           b                  = b
+times a                    (Node One)         = a
+times (Data (I i1))        (Data (I i2))      = int (i1 * i2)
+times a@(Data (V _))       (Node (Times b c)) = times b (times a c)
+times a                    (Node (Times b c)) = times (times a b) c
+times t@(Node (Times _ _)) b                  = times b t
+times a                    (Node (Plus b c))  = plus (times a b) (times a c)
+times a                    (Node (Neg b))     = times (neg a) b
+times a                    b                  = Node $ Times a b
 
-rvar :: String -> RingInt
-rvar = Data . V
-
-rint :: Int -> RingInt
-rint = Data . I
+instance Reduce Ring IntData where
+    reduce (Node Zero)        = zero
+    reduce (Node One)         = one
+    reduce (Node (Neg a))     = neg a
+    reduce (Node (Plus a b))  = plus a b
+    reduce (Node (Times a b)) = times a b
 
 
 --- The `if_then_else_` construct
