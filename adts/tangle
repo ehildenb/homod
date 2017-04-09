@@ -1,4 +1,5 @@
 #!/usr/bin/env zsh
 
+echo "$(date): Generating 'adts.hs'..."
 pandoc-tangle --from markdown --to code-haskell --code haskell \
               adts.md > adts.hs
