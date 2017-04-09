@@ -162,7 +162,7 @@ the theory are called out as already existing (the `forall`), and as a result we
 ensure that other parts exsit (the `exists`).
 
 ```
-univ SET is
+umod SET is
    protecting BOOL .
 
   --- Maude's normal notion of `SET{A}`, for `A` a view to `TRIV`
@@ -207,7 +207,7 @@ univ SET is
     eq $f(cs, mt, ds)       = mt .
     eq $f(cs, (NA NA'), ds) = $f(cs, NA, ds) $f(cs, NA', ds) .
 
-enduniv
+endum
 ```
 
 Semantics
@@ -428,7 +428,7 @@ operators to derived terms. But, we can still gain in *extensibility* even using
 these theories:
 
 ```
-univ LEX-PAIR is
+umod LEX-PAIR is
 
   forall:
     view X from POSET .
@@ -444,7 +444,7 @@ univ LEX-PAIR is
     eq 2nd(< A ; B >) = B .
     eq < A ; B > < < A’ ; B’ > = (A < A’) or (A == A’ and B < B’) .
 
-enduniv
+endum
 ```
 
 While the hard work of demonstrating a `view` to `POSET` is left to the user, at
@@ -462,7 +462,7 @@ Tuples
 We want tuple-types.
 
 ```
-univ TUPLE is
+umod TUPLE is
 
   forall:
     sorts A B .
@@ -475,7 +475,7 @@ univ TUPLE is
     eq p1(< A ; B >)= A .
     eq p2(< A ; B >)= B .
 
-enduniv
+endum
 ```
 
 If Then Else
@@ -485,7 +485,7 @@ Instead of having `if_then_else_fi` be "magic" using `poly` in Maude, we can
 explicity construct an `if_then_else_if` for each kind.
 
 ```
-univ CONDITIONAL is
+umod CONDITIONAL is
   protecting BOOL .
 
   forall:
@@ -496,7 +496,7 @@ univ CONDITIONAL is
     eq if true  then a1 else a2 fi = a1 .
     eq if false then a1 else a2 fi = a2 .
 
-enduniv
+endum
 ```
 
 Symbolic Terms
@@ -508,7 +508,7 @@ bottom element, so that if you don't care what sort of variable you're using you
 can use that sort.
 
 ```
-univ VAR is
+umod VAR is
 
   forall:
     sort A .
@@ -522,7 +522,7 @@ univ VAR is
   exists:
     subsort Var{$A} < Var{$B} .
 
-enduniv
+endum
 ```
 
 Now you might want to be able to distinguish at the sort level that a term is
@@ -532,7 +532,7 @@ well. This allows equational simplification to happen over terms and terms with
 variables, but allows sort-level distinction of terms without variables.
 
 ```
-univ GROUND is
+umod GROUND is
 
   forall:
     sort A .
@@ -553,11 +553,11 @@ univ GROUND is
   exists:
     op f : Ground{$A} -> Ground{$B} .
 
-enduniv
+endum
 ```
 
 ```
-univ CONSTRAINED-TERM is
+umod CONSTRAINED-TERM is
   using VAR | GROUND .
   protecting BOOL => VAR .
 
@@ -568,11 +568,11 @@ univ CONSTRAINED-TERM is
     var ga : Ground{$A} . var c : Bool .
     eq ga | c = ga .
 
-enduniv
+endum
 
-univ SYMBOLIC-STATE is
+umod SYMBOLIC-STATE is
   using CONSTRAINED-TERM => SET .
-enduniv
+endum
 ```
 
 Substitutions
@@ -586,7 +586,7 @@ have variables in them. This requires that `VAR` and `CONDITIONAL` are defined
 over the sort-heirarchy of interest.
 
 ```
-univ SUBSTITUTION is
+umod SUBSTITUTION is
   using (VAR ; CONDITIONAL) | GROUND .
 
   forall:
@@ -616,13 +616,15 @@ univ SUBSTITUTION is
     eq gb[sc] = gb .
     eq $f(as)[sc] = $f(as[sc]) .
 
-enduniv
+endum
 ```
 
 ### Binder Aware
 
+Incomplete.
+
 ```
-univ BINDER is
+umod BINDER is
   using SUBSTITUTION | (VAR => SET) .
 
   forall:
@@ -633,7 +635,7 @@ univ BINDER is
     op __._ : Binder{$A} Set{Var{$A}} C => 
     var ba : Binder{$A} . var c : $C .
 
-enduniv
+endum
 ```
 
 Let Expressions
@@ -643,7 +645,7 @@ Many programmers would also like `let ... in ...` clauses. Here we allow that
 for ground bindings in the first argument (only ground substitutions):
 
 ```
-univ LET-EXPRESSION is
+umod LET-EXPRESSION is
   using SUBSTITUTION .
 
   forall:
@@ -653,7 +655,32 @@ univ LET-EXPRESSION is
     var gsa : GroundSubst{$A} . var b : $B .
     eq let gsa in b = b [gsa] .
 
-enduniv
+endum
+```
+
+Unification
+-----------
+
+If you only have matching engines and concrete rewriting, perhaps you still want
+unification, but defined at the meta-level.
+
+```
+umod UNIFICATION is
+  using SUBSTITUTION .
+ 
+  --- TODO: The resulting substitution could have many sorts present.
+  --- TODO: What is bot?
+  forall:
+    sorts A B Subst{$B} .
+    sort* C .
+    op f : $C -> $A .
+  exists:
+    op unifiers : $A $A -> Subst{$B} .
+    vars cs cs' : $C . vars a a' : $A .
+    eq unifiers(f[cs], f[cs']) = unifiers(cs, cs') .
+    eq unifiers(a, a') = bot [owise] .
+
+endum
 ```
 
 Functions
@@ -663,7 +690,7 @@ Here we define functions between one sort heirarchy any another, including
 appropriate sub-sorting relations (contravariant on domain, covariant on range).
 
 ```
-univ FUNCTION is
+umod FUNCTION is
   using SUBSTITUTION .
 
   --- function sorts
@@ -712,5 +739,5 @@ univ FUNCTION is
     eq (\ va1 . b) [va2 := a] = \ va1 . if va1 == va2 then b else b [va2 := a] fi .
     eq (\ va1 . b) [sc] = \ va1 . (b [sc]) [owise] .
 
-enduniv
+endum
 ```
