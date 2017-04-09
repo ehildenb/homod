@@ -1,0 +1,49 @@
+load meta-strategy
+
+fmod SCHEDULER is
+  sorts Task NeTasks Tasks .
+  subsorts Task < NeTasks < Tasks .
+  sort State .
+
+  op .Tasks : -> Tasks .
+  op __ : NeTasks Tasks -> NeTasks [assoc comm id: .Tasks] .
+  op __ : Tasks   Tasks -> Tasks   [ditto] .
+
+  vars NeTS : NeTasks .
+  eq NeTS NeTS = NeTS .
+
+  op {_} : Tasks -> State .
+  op _|_ : Task Tasks -> State .
+
+  ops ta tb tc : -> Task .
+  op addTasks    : Tasks -> Task .
+  op removeTasks : Tasks -> Task .
+
+  vars TS TS' : Tasks . var T : Task .
+  eq addTasks(TS)      | TS'   = {TS TS'} .
+  eq removeTasks(T TS) | T TS' = removeTasks(T TS) | TS' .
+  eq removeTasks(TS)   | TS'   = {TS'} [owise] .
+endfm
+
+mod NONDET-SCHEDULER is
+  protecting SCHEDULER .
+
+  var T : Task . var TS : Tasks .
+  rl { T TS } => T | TS .
+  rl T | TS   => { TS } .
+endm
+
+reduce in META-STRATEGY :
+
+trace < 0 | .TermSetMap , .TermSetMap >
+state < '`{_`}['__['tb.Task, 'addTasks['__['ta.Task, 'tb.Task]]]] >
+strategy < set-module('NONDET-SCHEDULER)
+         ; record
+         ; while (not empty?) { narrow
+                              ; record
+                              ; load
+                              }
+         ; summarize
+         >
+
+.

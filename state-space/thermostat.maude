@@ -1,0 +1,294 @@
+load check-sat
+load strategy 
+
+---fmod STATE-EXPLORE is
+---  protecting INT .
+---  protecting BOOL .
+---  protecting CHECK-SAT .
+---
+---  sorts State Constraint ConstrainedState NeConstrainedStates ConstrainedStates .
+---  subsort Bool < Constraint .
+---  subsorts ConstrainedState < NeConstrainedStates < ConstrainedStates .
+---
+---  var N : Nat . vars B B' : Bool . vars S S' : State . vars C C' : Constraint .
+---  vars CS CS' CS'' : ConstrainedState . vars NeCSS1 NeCSS2 : NeConstrainedStates . vars CSS CSS' CSS'' : ConstrainedStates .
+---
+---  op <_|_> : State Constraint -> ConstrainedState [ctor format(n d d d d d)] .
+---  op mt    : -> ConstrainedStates [ctor] .
+---  op _,_   : ConstrainedStates ConstrainedStates   -> ConstrainedStates   [ctor assoc comm id: mt prec 80] .
+---  op _,_   : ConstrainedStates NeConstrainedStates -> NeConstrainedStates [ctor ditto] .
+---  --------------------------------------------------------------------------------------
+---  eq < S | false >   = mt .
+---  eq NeCSS1 , NeCSS1 = NeCSS1 .
+---
+---  sorts DistCommand Command DistProgram NeProgram Program ProofState .
+---  subsort DistCommand < Command     < NeProgram < Program .
+---  subsort DistCommand < DistProgram < NeProgram .
+---  subsort ConstrainedStates < ProofState .
+---
+---  var DCO : DistCommand . var CO : Command . var P : Program . var NeP : NeProgram . vars PS PS' : ProofState .
+---
+---  op {_|_}   : ConstrainedStates ConstrainedStates                   -> ProofState [ctor] .
+---  op {_|_|_} : ConstrainedStates ConstrainedStates ConstrainedStates -> ProofState [ctor] .
+---  op skip : -> Program [ctor] .
+---  op __   : Program Program -> Program [ctor assoc id: skip] .
+---  op __   : Program NeProgram -> NeProgram [ctor ditto] .
+---  op _[_] : Program ProofState -> [ProofState] .
+---  op _============_ : ProofState Program -> ProofState [format(d n n d) right id: skip prec 99] .
+---  -----------------------------------------------------------------------------------------------
+---  eq PS ============ CO P    = CO [ PS ] ============ P .
+---  eq CO NeP [ PS ]           = NeP [ CO [ PS ] ] .
+---  eq DCO [ NeCSS1 , NeCSS2 ] = DCO [ NeCSS1 ] , DCO [ NeCSS2 ] .
+---
+---  op fix : Program -> Command .
+---  op fix : DistProgram -> DistCommand .
+---  -------------------------------------
+---  ceq fix(P) [ PS ] = if PS == PS' then PS else fix(P) [ PS' ] fi if PS' := P [ PS ] .
+---
+---  op repeat : Nat Program -> Command .
+---  op repeat : Nat DistProgram -> DistCommand .
+---  --------------------------------------------
+---  eq repeat(0, P)    = skip .
+---  eq repeat(s(N), P) = P repeat(N, P) .
+---
+---  op _->_ : Bool ConstrainedState -> [ConstrainedStates] [prec 75] .
+---  ---------------------------------------------------------------------
+---  eq B -> < S | C > = < S | C and B > .
+---
+---  op bumpVars : -> DistCommand .
+---  op downConstrainedStateError : -> [ConstrainedState] .
+---  ------------------------------------------------------
+---  eq bumpVars [ CS ] = downTerm(bumpVars(upTerm(CS)), downConstrainedStateError) .
+---
+---  op subsume : -> Command .
+---  -------------------------
+---  eq subsume [ < S | C > , < S | C' > , CSS ] = subsume [ < S | C or C' > , CSS ] .
+---  eq subsume [ CSS                          ] = CSS [owise] .
+---
+---  op simplify : -> Program .
+---  --------------------------
+---  eq simplify = prune-unsat bumpVars abstract subsume .
+---
+---  op _subsumes_ : ConstrainedState ConstrainedState -> Bool .
+---  ---------------------------------------------------------
+---  ceq CS subsumes CS' = true if < S  | C  > := abstract [ CS  ]
+---                             /\ < S' | C' > := abstract [ CS' ]
+---                             /\ S == S'
+---                             /\ true := valid(C' implies C) .
+---
+---  eq stepPS [ { CSS | CS' , CSS' } ] = { CSS , CS' | step [ CS' ] | CSS' } .
+---  ceq { CS , CSS | CS' , CSS' |        CSS'' } = { CS , CSS |       CSS' |        CSS'' } if CS   subsumes CS'  .
+---  ceq { CS , CSS | CS' , CSS' |        CSS'' } = {      CSS | CS' , CSS' |        CSS'' } if CS'  subsumes CS   .
+---  ceq {      CSS | CS' , CSS' | CS'' , CSS'' } = {      CSS |       CSS' | CS'' , CSS'' } if CS'' subsumes CS'  .
+---  ceq {      CSS | CS' , CSS' | CS'' , CSS'' } = {      CSS | CS' , CSS' |        CSS'' } if CS'  subsumes CS'' .
+---
+---  eq  { CSS | CSS' | CSS'' } = { CSS | simplify [ CSS' , CSS'' ] } [owise] .
+---
+---  op next : -> DistCommand .
+---  op step : -> DistProgram .
+---  op abstract : -> DistCommand .
+---  ------------------------------
+---  eq step = bumpVars next prune-unsat simplify .
+---
+---  op stepPS : -> DistCommand .
+---endfm
+---
+
+fmod STATES is
+  protecting CHECK-SAT .
+
+  sorts PreState State NeStates States .
+  subsorts State < NeStates < States .
+
+  sorts NeAtts Atts .
+  subsort NeAtts < Atts .
+
+  op .Atts : -> Atts .
+  op __ : Atts   Atts -> Atts   [ctor assoc comm id: .Atts] .
+  op __ : NeAtts Atts -> NeAtts [ctor ditto] .
+
+  var NeA : NeAtts .
+  ------------------
+  eq NeA NeA = NeA .
+
+  op <_|_|_> : PreState Bool Atts -> State .
+
+  op .States : -> States .
+  op _,_     : States   States -> States   [ctor assoc comm id: .States prec 65] .
+  op _,_     : NeStates States -> NeStates [ctor ditto] .
+
+  var NeSS : NeStates .
+  ---------------------
+  eq NeSS , NeSS = NeSS .
+endfm
+
+view States from TRIV to STATES is sort Elt to States . endv
+view State  from TRIV to STATES is sort Elt to State  . endv
+
+fmod STATES-STRATEGIES is
+  protecting CAT-PAIR-DIAGRAM{State} .
+  ---protecting CAT-PAIR-DIAGRAM{States} .
+
+---  subsort =>{State,State} < =>{States,States} .
+---  subsort =>{State,Pair}  < =>{States,Pair} .
+---  subsort =>{Pair,State}  < =>{Pair,States} .
+---  subsort =>{Pair,Pair}   < =>{Pair,Pair} .
+
+  op prune-unsat : -> =>{State,State} .
+
+  var X : PreState . var B : Bool . var A : Atts .
+  ------------------------------------------------
+  eq prune-unsat < X | B | A > = if satis(B) then < X | B | A > else .States fi .
+endfm
+
+---fmod STATE-EXPLORE is
+---  extending STATE-SORT .
+---  extending CAT-PAIR-DIAGRAM{State} .
+---
+---
+---  op minVar : Nat -> Atts .
+---  op maxVar : Nat -> Atts .
+---
+---  sort X .
+---  op .State  : -> State .
+---
+---  op step        : -> =>{State,State} .
+---  op prune-unsat : -> =>{State,State} .
+---  op minus       : -> =>{Pair,State} .
+---  op plus        : -> =>{Pair,State} .
+---
+---  var x : X . var B : Bool . var A : Atts .
+---  -----------------------------------------
+---  eq prune-unsat < x | B | 
+---
+---endfm
+---
+---fmod SET-MONAD is
+---  protecting NAT .
+---  protecting CHECK-SAT .
+---  extending CAT-TUPLE .
+---
+---  sorts State NeStates States StateOp StateBiOp .
+---  sorts BiStates BiStateOp BiStateBiOp .
+---  subsorts State < NeStates < States < StateOp < Un=>Un .
+---  subsort StateBiOp < Un=>Bi .
+---  subsorts BiStates < BiStateBiOp < Bi=>Bi .
+---  subsort BiStateOp < Bi=>Un .
+---
+---  op __ : StateOp     States   -> States .
+---  op __ : StateBiOp   States   -> BiStates .
+---  op __ : BiStateOp   BiStates -> States .
+---  op __ : BiStateBiOp BiStates -> BiStates .
+---
+---  ops plus minus : -> BiStateOp . op prune-unsat : -> StateOp .
+---  op _subsumes_  : State State -> [Bool] . op _minus_ : State State -> [State] .
+---  ------------------------------------------------------------------------------
+---  eq  < x | B | A > ; prune-unsat   = if satis(B) then < x | B | A > else .States fi .
+---  eq  < SS      , SS'     > ; plus  = SS SS' .
+---  eq  < .States , SS'     > ; minus = .States .
+---  eq  < S NeSS  , SS'     > ; minus = plus < minus < S , SS' > , minus < NeSS , SS' > > .
+---  eq  < S       , .States > ; minus = S .
+---  ceq < S       , S' SS'  > ; minus = .States if S' subsumes S .
+---  eq  < S       , S' SS'  > ; minus = < S minus S' , SS' > ; minus .
+---
+---  op fresh-apart : -> Bi=>Bi .
+---  ----------------------------
+---  
+---
+---  ops step abstract freshen fresh-step : -> StateOp .
+---  ---------------------------------------------------
+---  eq fresh-step = step ; abstract ; freshen .
+---
+---  op downStatesError : -> [States] .
+---  eq SS ; freshen = downTerm(bumpVars(upTerm(SS)), downStatesError) .
+---
+---  op NS   [_] : Nat -> StateOp .
+---  op NS<= [_] : Nat -> StateOp .
+---  var N : Nat .
+---  -------------
+---  eq NS   [ 0    ] = idUn .
+---  eq NS<= [ 0    ] = idUn .
+---  eq NS<= [ s(N) ] = < NS<= [ N ]            , NS [ s(N) ] > ; plus .
+---  eq NS   [ s(N) ] = < NS [ N ] ; fresh-step , NS<= [ N ]  > ; minus .
+---
+---  op _->_ : Bool State -> State [prec 65] .
+---  -------------------------------
+---  eq B -> < x | B' > = < x | B and B' > .
+---endfm
+---
+---fmod THERMOSTAT is
+---  extending SET-MONAD .
+---  protecting INT .
+---
+---  op _@  [_,_]  : Int Int Int -> Bool .   --- exclusive, exclusive
+---  op _@  [_,_]] : Int Int Int -> Bool .   --- exclusive, inclusive
+---  op _@ [[_,_]  : Int Int Int -> Bool .   --- inclusive, exclusive
+---  op _@ [[_,_]] : Int Int Int -> Bool .   --- inclusive, inclusive
+---
+---  vars I I1 I2 : Int .
+---  --------------------
+---  eq I @  [ I1 , I2 ]  = I >  I1 and I <  I2 .
+---  eq I @  [ I1 , I2 ]] = I >  I1 and I <= I2 .
+---  eq I @ [[ I1 , I2 ]  = I >= I1 and I <  I2 .
+---  eq I @ [[ I1 , I2 ]] = I >= I1 and I <= I2 .
+---
+---  ops heat cool : Int -> X .
+---  var X : Integer . vars B B1 B2 : Bool .
+---  --------------------------------
+------  eq < heat(I) | B > ; step = (I > 76                       -> < cool(I)            | B >)
+------                            , (I < 75 and iVar('X) @ [0,3]] -> < heat(I + iVar('X)) | B >)
+------                            , < heat(I) | B > .
+------  eq < cool(I) | B > ; step = I < 65                       -> < heat(I)                | B >
+------                            , I > 64 and iVar('X) @ [0,2]] -> < cool(I + (- iVar('X))) | B >
+------                            , < cool(I) | B > .
+------
+------  eq < heat(I) | B > ; abstract = < heat(iVar('X)) | B and iVar('X) === I > .
+------  eq < cool(I) | B > ; abstract = < cool(iVar('X)) | B and iVar('X) === I > .
+------
+------  eq < heat(I1) | B1 > subsumes < cool(I2) | B2 > = false .
+------  eq < cool(I1) | B1 > subsumes < heat(I2) | B2 > = false .
+------  eq < heat(I1) | B1 > subsumes < heat(I2) | B2 > = valid(I1 === I2 and B1 and B2) .
+------  eq < cool(I1) | B1 > subsumes < cool(I2) | B2 > = valid(I1 === I2 and B1 and B2) .
+------
+------  eq < heat(I1) | B1 > minus < cool(I2) | B2 > = < heat(I1) | B1 > .
+------  eq < cool(I1) | B1 > minus < heat(I2) | B2 > = < cool(I1) | B1 > .
+------  ---eq < heat(I1) | B1 > minus < heat(I2) | B2 > = < heat(I1) | 
+------  eq < cool(I1) | B1 > minus < cool(I2) | B2 > = valid(I1 === I2 and B1 and B2) .
+---endfm
+---
+---
+---reduce
+---
+------ < heat(iVar('X)) | iVar('X) @ [[ 70 , 72 ]] > ;
+---NS [ 2 ] .
+---
+---
+------reduce
+------
+------< heat( iVar('X) ) | iVar('X) @ [[70,72]] >
+------============
+------skip
+------.
+------
+------reduce
+------
+------< heat(X0:Int) | X0:Int < 3 and X0:Int > 5 >,
+------< heat(X0:Int) | X0:Int > 4 >
+------============
+------subsume step
+------
+------.
+---
+------ rewrite
+------
+------ < heat(iVar('X)) | iVar('X) @ [[68,72]] >
+------ ============
+------ step step
+------
+------ .
+---
+------reduce
+------
+------simplify(X0:Integer < X1:Integer and X0:Integer < (X1:Integer + 2))
+------
+------.

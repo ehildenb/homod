@@ -1,0 +1,66 @@
+fmod CAT is
+  protecting BOOL .
+
+  sorts Arrow Object .
+
+  op id : -> Arrow .
+  op _;_ : Arrow Arrow -> [Arrow]  [assoc id: id prec 85] .
+  op __ : Arrow Object -> [Object] [left id: id] .
+
+  vars A1 A2 : Arrow . var O : Object .
+  -------------------------------------
+  ceq (A1 ; A2) O = A2 (A1 O) if not (A1 == id or A2 == id) .
+endfm
+
+fmod CAT-PAIR-DIAGRAM{X :: TRIV} is
+  extending CAT .
+
+  --- Maude isn't smart enough to do nested curlys, so I can't do:
+  --- =>{Pair{X},X}
+
+  --- objects
+  sort Pair{X} .
+  subsorts X$Elt Pair{X} < Object .
+
+  --- arrows
+  sorts =>{X,X} =>{X,Pair} =>{Pair,X} =>{Pair,Pair} .
+  subsorts =>{X,X} =>{X,Pair} =>{Pair,X} =>{Pair,Pair} < Arrow .
+
+  --- composition
+  op _;_ : =>{X,X}       =>{X,X}       -> =>{X,X}       [ctor ditto] .
+  op _;_ : =>{X,X}       =>{X,Pair}    -> =>{X,Pair}    [ctor ditto] .
+  op _;_ : =>{X,Pair}    =>{Pair,Pair} -> =>{X,Pair}    [ctor ditto] .
+  op _;_ : =>{X,Pair}    =>{Pair,X}    -> =>{X,X}       [ctor ditto] .
+  op _;_ : =>{Pair,X}    =>{X,X}       -> =>{Pair,X}    [ctor ditto] .
+  op _;_ : =>{Pair,X}    =>{X,Pair}    -> =>{Pair,Pair} [ctor ditto] .
+  op _;_ : =>{Pair,Pair} =>{Pair,Pair} -> =>{Pair,Pair} [ctor ditto] .
+  op _;_ : =>{Pair,Pair} =>{Pair,X}    -> =>{Pair,X}    [ctor ditto] .
+
+  --- application
+  op __ : =>{X,X}       X$Elt   -> X$Elt   [ditto] .
+  op __ : =>{X,Pair}    X$Elt   -> Pair{X} [ditto] .
+  op __ : =>{Pair,Pair} Pair{X} -> Pair{X} [ditto] .
+  op __ : =>{Pair,X}    Pair{X} -> X$Elt   [ditto] .
+
+  --- Pairs of =>{X,X} and X$Elt
+  op [_,_] : X$Elt   X$Elt   -> Pair{X}       [ctor] .
+  op [_,_] : =>{X,X} =>{X,X} -> =>{Pair,Pair} [ctor] .
+  op <_,_> : =>{X,X} =>{X,X} -> =>{X,Pair}    [ctor] .
+  vars XX1 XX2 : =>{X,X} . var X : X$Elt .
+  ----------------------------------------
+  eq < XX1 , XX2 > X = [ XX1 X , XX2 X ] .
+  eq < id  , id  >   = id .
+endfm
+
+--- fmod SET-MONAD{X :: TRIV} is
+---   protecting SET{X} .
+--- 
+---   sorts Op{X,X} Op{X,Set{X}} .
+---   subsort Op{X,X} Set{X} < Op{X,Set{X}} .
+--- 
+---   op __ : Op{X,X}      X$Elm -> X$Elm .
+---   op __ : Op{X,Set{X}} X$Elm -> Set{X} .
+--- 
+---   var OPXX : Op{X,X} . var X : X$Elm . var NeXS1 NeXS2 : NeSet{X} .
+---   eq OPXX (NeXS1 NeXS2) = (OPXX NeXS1) (OPXX NeXS2) .
+--- endfm

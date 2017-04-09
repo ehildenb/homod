@@ -1,0 +1,156 @@
+load smt.maude
+
+set include BOOLEAN off .
+
+fmod TRUTH-VALUE is
+  sort Bool .
+  op true : -> Bool [ctor special (id-hook SystemTrue)] .
+  op false : -> Bool [ctor special (id-hook SystemFalse)] .
+endfm
+
+fmod BOOL-OPS is
+  protecting TRUTH-VALUE .
+  op not_  : Bool -> Bool [prec 53] .
+  op _and_ : Bool Bool -> Bool [assoc comm prec 55] .
+  op _or_  : Bool Bool -> Bool [assoc comm prec 59] .
+  op _xor_ : Bool Bool -> Bool [assoc comm prec 57] .
+  op _implies_ : Bool Bool -> Bool [gather (e E) prec 61] .
+  vars A B C : Bool .
+
+  --- Go to DNF instead of ANF (Maude prelude goes to ANF)
+
+  eq true  and A     = A .
+  eq false and A     = false .
+  eq A     and A     = A .
+  eq A     and not A = false .
+  eq true  or A     = true .
+  eq false or A     = A .
+  eq A     or A     = A .
+  eq A     or not A = true .
+  eq A xor B = (A and not B) or (B and not A) .
+  eq A implies B = B or not A .
+  eq A and (B or C) = (A and B) or (A and C) .
+  eq not (A or  B)  = (not A) and (not B) .
+  eq not (A and B)  = (not A) or  (not B) .
+  eq not (not A)    = A .
+  eq not true  = false .
+  eq not false = true .
+endfm
+
+fmod TRUTH is
+  protecting TRUTH-VALUE .
+  op if_then_else_fi : Bool Universal Universal -> Universal 
+        [poly (2 3 0)
+         special (id-hook BranchSymbol
+                  term-hook 1 (true)
+                  term-hook 2 (false))] .
+
+  op _==_ : Universal Universal -> Bool 
+        [prec 51 poly (1 2)
+         special (id-hook EqualitySymbol
+                  term-hook equalTerm (true)
+                  term-hook notEqualTerm (false))] .
+
+  op _=/=_ : Universal Universal -> Bool 
+        [prec 51 poly (1 2)
+         special (id-hook EqualitySymbol
+                  term-hook equalTerm (false)
+                  term-hook notEqualTerm (true))] .
+endfm
+
+fmod BOOL is
+  protecting BOOL-OPS .
+  protecting TRUTH .
+endfm
+
+fmod SMT-HARNESS is
+  protecting REAL-INTEGER .
+endfm
+
+fmod CHECK-SAT is
+  protecting SMT-HARNESS .
+  protecting META-LEVEL .
+  protecting BOOL .
+  protecting INT .
+
+  op _===_  : Bool Bool -> Bool [gather (e E) prec 51] .
+  op _=/==_ : Bool Bool -> Bool [gather (e E) prec 51] .
+  op _?_:_  : Bool Bool Bool -> Bool [gather (e e e) prec 71] .
+  op _===_  : Int  Int  -> Bool [gather (e E) prec 51] .
+  op _=/==_ : Int  Int  -> Bool [gather (e E) prec 51] .
+  op _?_:_  : Bool Int  Int  -> Int  [gather (e e e) prec 71] .
+
+  op subsortInt : Qid -> Bool .
+  eq subsortInt('Zero)  = true .
+  eq subsortInt('NzNat) = true .
+  eq subsortInt('Nat)   = true .
+  eq subsortInt('NzInt) = true .
+  eq subsortInt('Int)   = true .
+
+  op isDistOp : Qid -> Bool .
+  eq isDistOp('_and_) = true .
+  eq isDistOp('_or_)  = true .
+  eq isDistOp('_xor_) = true .
+
+  --- TODO: Should convertToSMT be at the object level instead of the meta-level?
+  op metaToSMT : TermList -> TermList .
+  op downBooleanError : -> [Boolean] .
+  op downIntegerError : -> [Integer] .
+  var V : Variable . var C : Constant . var name : String .
+  var Qi : Qid . var T : Term . vars NeTL NeTL1 NeTL2 : NeTermList .
+  ------------------------------------------------------------------
+  ceq metaToSMT(V)               = qid(name + ":Boolean")                 if getType(V) == 'Bool    /\ name := string(getName(V)) .
+  ceq metaToSMT(V)               = qid(name + ":Integer")                 if subsortInt(getType(V)) /\ name := string(getName(V)) .
+  ceq metaToSMT(Qi[T , NeTL])    = Qi[metaToSMT(T) , metaToSMT(Qi[NeTL])] if isDistOp(Qi) .
+  ceq metaToSMT(Qi[T])           = metaToSMT(T)                           if isDistOp(Qi) .
+  ceq metaToSMT(T)               = qid(name + ".Integer")                 if name := getNatStr(T) .
+  eq  metaToSMT('false.Bool)     = 'false.Boolean .
+  eq  metaToSMT('true.Bool)      = 'true.Boolean .
+  eq  metaToSMT((NeTL1 , NeTL2)) = metaToSMT(NeTL1) , metaToSMT(NeTL2) .
+  eq  metaToSMT(Qi[NeTL])        = Qi[metaToSMT(NeTL)] .
+  eq  metaToSMT(T)               = T [owise] .
+
+  ops satis valid   : Bool -> Bool .
+  var A : Bool .
+  --------------
+  --- WARNING: `satis(A)` may return return `false` when actually the answer is "don't know".
+  --- This affects the correctness of `valid(A)` as well.
+  eq satis(true)  = true .
+  eq satis(false) = false .
+  eq satis(A)     = metaCheck(['SMT-HARNESS], metaToSMT(upTerm(A))) .
+  eq valid(A)     = not satis(not A) .
+
+  --- Variables
+  -------------
+  op iVar : Qid -> Int .
+  op bVar : Qid -> Bool .
+  op downNatError : -> [Nat] .
+  op downIVarError : -> [Int] .
+  op downBVarError : -> [Bool] .
+  ---------------------------------
+  eq iVar(Qi) = downTerm(qid(string(Qi) + "0:Int"), downIVarError) .
+  eq bVar(Qi) = downTerm(qid(string(Qi) + "0:Bool"), downBVarError) .
+
+  op mkNatStr   : String -> Term .
+  op getNatStr  : Term -> [String] .
+  op nextVarStr : Qid  -> String .
+  var index : Nat . vars str str' : String .
+  --------------------------------
+  eq  getNatStr('0.Zero)      = "0" .
+  eq  getNatStr('s_['0.Zero]) = "1" .
+  ceq getNatStr(Qi['0.Zero])  = substr(str, 3, length(str)) if str := string(Qi) .
+  eq  mkNatStr("0")           = '0.Zero .
+  eq  mkNatStr("1")           = 's_['0.Zero] .
+  eq  mkNatStr(str)           = qid("s_^" + str)['0.Zero] .
+  ceq nextVarStr(Qi)          = str if str' := substr(string(Qi), 0, length(string(Qi)))
+                                    /\ name := substr(str', 0, 1)
+                                    /\ index := downTerm(mkNatStr(substr(str', 1, length(str'))), downNatError) + 1
+                                    /\ str := name + getNatStr(upTerm(index)) .
+
+  op bumpVars : Term -> Term .
+  ----------------------------
+  eq bumpVars(V)               = qid(nextVarStr(getName(V)) + ":" + string(getType(V))) .
+  eq bumpVars((NeTL1 , NeTL2)) = bumpVars(NeTL1) , bumpVars(NeTL2) .
+  eq bumpVars(Qi[NeTL])        = Qi[bumpVars(NeTL)] [owise] .
+  eq bumpVars(T)               = T [owise] .
+endfm
