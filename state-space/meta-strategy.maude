@@ -33,101 +33,152 @@ fmod SIMP is
 endfm
 
 --- Useful data-structures over terms for analysis
-fmod TERM-DATA is
+fmod CTERM-DATA is
+  extending BOOL .
   protecting META-LEVEL .
 
-  sorts TermSet NeTermSet TermSetMap TermSetTrace .
-  subsorts Term < NeTermSet < TermSet .
+  sorts CTerm CTermSet NeCTermSet CTermSetMap CTermSetTrace .
+  subsorts Term < CTerm < NeCTermSet < CTermSet .
 
-  var N : Nat .
-  vars TS TS' : TermSet . vars NeTS NeTS' : NeTermSet . vars TSM TSM' : TermSetMap .
+  var N : Nat . vars B B' : Bool .
+  vars T T' : Term . vars CT CT' CT'' : CTerm .
+  vars CTS CTS' : CTermSet . vars NeCTS NeCTS' : NeCTermSet . vars CTSM CTSM' : CTermSetMap .
 
-  op .TermSet : -> TermSet .
-  op _;;_ : TermSet TermSet   -> TermSet   [ctor assoc comm id: .TermSet prec 60] .
-  op _;;_ : TermSet NeTermSet -> NeTermSet [ctor ditto] .
+  op _|_ : Term Bool -> CTerm [right id: true prec 52] .
+  ------------------------------------------------------
+
+  op .CTermSet : -> CTermSet .
+  op _;;_ : CTermSet CTermSet   -> CTermSet   [ctor assoc comm id: .CTermSet prec 60] .
+  op _;;_ : CTermSet NeCTermSet -> NeCTermSet [ctor ditto] .
+  ----------------------------------------------------------
+  eq NeCTS ;; NeCTS = NeCTS .
+
+  op _++_ : CTermSet CTermSet -> CTermSet [assoc comm id: .CTermSet prec 61] .
+  ----------------------------------------------------------------------------
+  ceq (CT ;; CTS) ++ (CT' ;; CTS') = (CT'' ;; CTS) ++ CTS' if CT'' := #mergeCTerms(CT, CT') .
+  eq  NeCTS       ++ NeCTS'        = NeCTS ;; NeCTS' [owise] .
+
+  --- TODO: Should union and difference be expressed as operators which also take modules?
+  --- Would that mean they should be in a later module?
+  --- TODO: What if there are multiple matches?
+  --- TODO: Should this be inlined into the defintion on `_++_`?
+  op #mergeCTerms : CTerm CTerm -> [CTermSet] [comm] .
+  --------------------------------------------------------
+---  ceq #mergeCTerms(T | B, CT') = if metaCheck(MOD, T'') then T | B else T | B or (#substAsConstraint(SUBST) and B') fi
+---                               if T' | B' := applySubst(make CT' apart-from (T | B), CT')
+---                               /\ SUBST   := metaMatch(MOD, T, T', nil, 0)
+---                               /\ T''     := applySubst(SUBST, upTerm(B' implies B))
+---  eq  #mergeCTerms(CT, CT')    = CT ;; CT' [owise] .
+  eq #mergeCTerms(CT, CT') = CT ;; CT' [owise] .
+
+  op _-_ : CTermSet CTermSet -> CTermSet [right id: .CTermSet prec 62] .
+  ----------------------------------------------------------------------
+  eq .CTermSet - NeCTS     = .CTermSet .
+  eq CT ;; NeCTS - NeCTS'  = (CT - NeCTS') ++ (NeCTS - NeCTS') .
+  eq (CT - (CT' ;; NeCTS)) = (CT - CT') - NeCTS .
+
+  --- Think of the atomic boolean expressions as variables, and of this as variable substitution.
+  op _[_] : Bool CTermSet -> [Bool] .
+  -----------------------------------
+  eq true           [ CTS ] = true .
+  eq false          [ CTS ] = false .
+  eq (  not     B') [ CTS ] = not (B' [ CTS ]) .
+  eq (B or      B') [ CTS ] = (B [ CTS ]) or      (B' [ CTS ]) .
+  eq (B and     B') [ CTS ] = (B [ CTS ]) and     (B' [ CTS ]) .
+  eq (B xor     B') [ CTS ] = (B [ CTS ]) xor     (B' [ CTS ]) .
+  eq (B implies B') [ CTS ] = (B [ CTS ]) implies (B' [ CTS ]) .
+
+  op empty? : -> Bool .
+  ---------------------
+  eq empty? [ .CTermSet ] = true .
+  eq empty? [ NeCTS     ] = false .
+
+  op .CTermSetMap : -> CTermSetMap .
+  op _|->_ : Nat CTermSet -> CTermSetMap [prec 64] .
+  op __ : CTermSetMap CTermSetMap -> CTermSetMap [assoc comm id: .CTermSetMap prec 65 format(d n d)] .
+  ----------------------------------------------------------------------------------------------------
+
+  op .CTermSetTrace : -> CTermSetTrace .
+  op _|_,_ : Nat CTermSetMap CTermSetMap -> CTermSetTrace [prec 66 format(d d n n d d)] .
+  ---------------------------------------------------------------------------------------
+  eq .CTermSetTrace = 0 | .CTermSetMap , .CTermSetMap .
+
+  op extend : CTermSet CTermSetTrace -> [CTermSetTrace] .
   -------------------------------------------------------
-  eq NeTS ;; NeTS = NeTS .
+  eq extend(CTS, 0    | .CTermSetMap , .CTermSetMap)     = s(0)    | 0 |-> CTS                  , 0 |-> CTS .
+  eq extend(CTS, s(N) | CTSM         , N |-> CTS' CTSM') = s(s(N)) | CTSM s(N) |-> (CTS - CTS') , CTSM' N |-> CTS' s(N) |-> (CTS ++ CTS') .
 
-  op _-_ : TermSet TermSet -> TermSet [prec 62] .
-  -----------------------------------------------
-  eq NeTS ;; TS - NeTS ;; TS' = TS - NeTS ;; TS' .
-  eq         TS -         TS' = TS [owise] .
-
-  op .TermSetMap : -> TermSetMap .
-  op _|->_ : Nat TermSet -> TermSetMap [prec 64] .
-  op __ : TermSetMap TermSetMap -> TermSetMap [assoc comm id: .TermSetMap prec 65 format(d n d)] .
-  op _|_,_ : Nat TermSetMap TermSetMap -> TermSetTrace [prec 66 format(d d n n d d)] .
-  ------------------------------------------------------------------------------------
-
-  op extend : TermSet TermSetTrace -> [TermSetTrace] .
-  ----------------------------------------------------
-  eq extend(TS, 0    | .TermSetMap , .TermSetMap)    = s(0)    | 0 |-> TS                , 0 |-> TS .
-  eq extend(TS, s(N) | TSM         , N |-> TS' TSM') = s(s(N)) | TSM s(N) |-> (TS - TS') , TSM' N |-> TS' s(N) |-> (TS ;; TS') .
-
-  --- TODO: what is `unexplored` on input 0? Just a variable of sort `Term`?
-  op unexplored : TermSetTrace -> TermSet .
+  --- TODO: what is `unexplored` on input 0? Just a variable of the appropriate sort?
+  op unexplored : CTermSetTrace -> CTermSet .
   -----------------------------------------
-  eq unexplored(s(N) | N |-> TS TSM , TSM') = TS .
+  eq unexplored(s(N) | N |-> CTS CTSM , CTSM') = CTS .
 endfm
 
-fmod TERM-COMMAND is
-  protecting TERM-DATA .
+fmod CTERM-COMMAND is
+  protecting CTERM-DATA .
 
-  sorts TermCommand TermModuleCommand .
+  sorts CTermCommand CTermModuleCommand .
 
-  var N : Nat . var TC : TermCommand .
-  vars T T' T'' : Term . vars NeTS NeTS' : NeTermSet .
+  var N : Nat . var TC : CTermCommand .
+  vars T T' T'' : CTerm . vars NeCTS NeCTS' : NeCTermSet .
   var MOD : Module . var TYPE : Type . var SUBST : Substitution .
 
-  op _[_] : TermCommand TermSet -> [TermSet] [prec 55] .
+  op _[_] : CTermCommand CTermSet -> [CTermSet] [prec 55] .
   ------------------------------------------------------
-  eq TC [ .TermSet      ] = .TermSet .
-  eq TC [ NeTS ;; NeTS' ] = TC [ NeTS ] ;; TC [ NeTS' ] .
+  eq TC [ .CTermSet      ] = .CTermSet .
+  eq TC [ NeCTS ;; NeCTS' ] = TC [ NeCTS ] ;; TC [ NeCTS' ] .
 
-  ops reduce rewrite narrow : -> TermModuleCommand .
-  op _in_ : TermModuleCommand Module -> TermCommand [prec 50] .
+  ops reduce rewrite narrow narrow-smt : -> CTermModuleCommand .
+  op _in_ : CTermModuleCommand Module -> CTermCommand [prec 50] .
   -------------------------------------------------------------
-  ceq reduce  in MOD [ T ] = T' if { T' , TYPE } := metaReduce(MOD, T) .
-  eq  rewrite in MOD [ T ] = #rewrite(MOD, T, #unrestrictedVar(MOD, T), 0) .
-  eq  narrow  in MOD [ T ] = #narrow(MOD, T, #unrestrictedVar(MOD, T), 0) .
+  ceq reduce     in MOD [ T ] = T' if { T' , TYPE } := metaReduce(MOD, T) .
+  eq  rewrite    in MOD [ T ] = #rewrite(MOD, T, #varAway(MOD, T), 0) .
+  eq  narrow     in MOD [ T ] = #narrow(MOD, T, #varAway(MOD, T), 0) .
+  eq  narrow-smt in MOD [ T ] = #narrow-smt(MOD, T, #varAway(MOD, T), 0) .
 
-  op #unrestrictedVar : Module Term -> Term .
-  -------------------------------------------
-  eq #unrestrictedVar(MOD, T) = qid("X:" + string(getKind(MOD, leastSort(MOD, T)))) .
+  --- TODO: #varAway needs to actually make the generated variable away from `T`
+  op #varAway : Module CTerm -> CTerm .
+  -----------------------------------
+  eq #varAway(MOD, T) = qid("X:" + string(getKind(MOD, leastSort(MOD, T)))) .
 
-  op #rewrite : Module Term Term Nat -> TermSet .
-  --------------------------------------------
+  op #rewrite : Module CTerm CTerm Nat -> CTermSet .
+  -----------------------------------------------
   ceq #rewrite(MOD, T, T', N) = T'' ;; #rewrite(MOD, T, T', s(N)) if { T'' , TYPE , SUBST } := metaSearch(MOD, T, T', nil, '+, 1, N) .
-  eq  #rewrite(MOD, T, T', N) = .TermSet [owise] .
+  eq  #rewrite(MOD, T, T', N) = .CTermSet [owise] .
 
-  op #narrow : Module Term Term Nat -> TermSet .
-  --------------------------------------------
+  --- TODO: If the term passed to `#narrow` is ground, is it a safe optimization to
+  --- pass it to `#rewrite` instead?
+  op #narrow : Module CTerm CTerm Nat -> CTermSet .
+  ----------------------------------------------
   ceq #narrow(MOD, T, T', N) = T'' ;; #narrow(MOD, T, T', s(N)) if { T'' , TYPE , SUBST } := metaNarrow(MOD, T, T', '+, 1, N) .
-  eq  #narrow(MOD, T, T', N) = .TermSet [owise] .
+  eq  #narrow(MOD, T, T', N) = .CTermSet [owise] .
+
+  op #narrow-smt : Module CTerm CTerm Nat -> CTerm .
 endfm
 
 fmod META-STRATEGY is
   extending SIMP .
-  protecting TERM-COMMAND .
+  protecting CTERM-COMMAND .
 
   sort Analysis .
-  subsorts TermCommand TermModuleCommand < Command .
+  subsorts CTermCommand CTermModuleCommand < Command .
 
   var N : Nat . vars A B : Bool .
-  var TC : TermCommand . var TMC : TermModuleCommand . vars P P1 P2 : Program .
+  var TC : CTermCommand . var TMC : CTermModuleCommand . vars P P1 P2 : Program .
   var H : Header . var SUBST : Substitution . var TYPE : Type . var MOD : Module .
-  vars T T' T'' : Term . var TS : TermSet . var NeTS : NeTermSet . var TST : TermSetTrace .
+  vars T T' T'' : CTerm . var CTS : CTermSet . var NeCTS : NeCTermSet . var CTST : CTermSetTrace .
 
-  op .Analysis    : -> Analysis .
-  op __           : Analysis Analysis -> Analysis [assoc comm id: .Analysis prec 95 format(d n d)] .
+  op .Analysis : -> Analysis .
+  op __        : Analysis Analysis -> Analysis [assoc comm id: .Analysis prec 95 format(d n d)] .
+  -----------------------------------------------------------------------------------------------
 
   op strategy       <_> : Program      -> Analysis [prec 85] .
   op current-module <_> : Module       -> Analysis [prec 85] .
-  op state          <_> : TermSet      -> Analysis [prec 85] .
-  op trace          <_> : TermSetTrace -> Analysis [prec 85] .
+  op state          <_> : CTermSet      -> Analysis [prec 85] .
+  op trace          <_> : CTermSetTrace -> Analysis [prec 85] .
   ------------------------------------------------------------
-  eq strategy < TC ; P > state < TS >
-   = strategy < P >      state < TC [ TS ] > .
+  eq strategy < TC ; P > state < CTS >
+   = strategy < P >      state < TC [ CTS ] > .
 
   eq strategy < TMC        ; P > current-module < MOD >
    = strategy < TMC in MOD ; P > current-module < MOD > .
@@ -135,39 +186,37 @@ fmod META-STRATEGY is
   op set-module : Header -> Command .
   -----------------------------------
   eq strategy < set-module(H) ; P > current-module < MOD >
-   = strategy < P >                 current-module < upModule(H, true) > .
+   = strategy < P >                 current-module < upModule(H, true) >
+   .
   eq strategy < set-module(H) ; P >
-   = strategy < P >                 current-module < upModule(H, true) > [owise] .
+   = strategy < P >                 current-module < upModule(H, true) > [owise]
+   .
 
   ops record load : -> Command .
   ------------------------------
-  eq strategy < record ; P > state < TS >              trace < TST >
-   = strategy < P >          state < TS >              trace < extend(TS, TST) > .
-  eq strategy < load   ; P > state < TS >              trace < TST >
-   = strategy < P >          state < unexplored(TST) > trace < TST > .
+  eq strategy < record ; P > state < CTS >              trace < CTST >
+   = strategy < P >          state < CTS >              trace < extend(CTS, CTST) > .
+  eq strategy < load   ; P > state < CTS >              trace < CTST >
+   = strategy < P >          state < unexplored(CTST) > trace < CTST > .
 
-  --- Think of the atomic boolean expressions as variables, and of this as variable substitution.
-  op _[_] : Bool TermSet -> [Bool] .
-  ----------------------------------
-  eq true          [ TS ] = true .
-  eq false         [ TS ] = false .
-  eq (  not     B) [ TS ] = not (B [ TS ]) .
-  eq (A or      B) [ TS ] = (A [ TS ]) or      (B [ TS ]) .
-  eq (A and     B) [ TS ] = (A [ TS ]) and     (B [ TS ]) .
-  eq (A xor     B) [ TS ] = (A [ TS ]) xor     (B [ TS ]) .
-  eq (A implies B) [ TS ] = (A [ TS ]) implies (B [ TS ]) .
-
-  op empty? : -> BVar .
-  ---------------------
-  eq empty? [ .TermSet ] = true .
-  eq empty? [ NeTS     ] = false .
-
-  eq strategy < if B then P1 else P2        ; P > state < TS >
-   = strategy < if B [ TS ] then P1 else P2 ; P > state < TS > .
+  eq strategy < if B        then P1 else P2 ; P > state < CTS >
+   = strategy < if B [ CTS ] then P1 else P2 ; P > state < CTS > .
 
   --- Use this operator to throw away the noise in the output
   op summarize : -> Command .
   ---------------------------
   eq strategy < summarize > current-module < MOD >
    = strategy < summarize > .
+
+  --- Macro Strategies
+  --- ----------------
+
+  op explore-all : -> Program .
+  -----------------------------
+  eq explore-all = record
+                 ; while (not empty?) { narrow
+                                      ; record
+                                      ; load
+                                      } .
+
 endfm

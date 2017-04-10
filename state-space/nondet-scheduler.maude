@@ -35,14 +35,10 @@ endm
 
 reduce in META-STRATEGY :
 
-trace < 0 | .TermSetMap , .TermSetMap >
+trace < .CTermSetTrace >
 state < '`{_`}['__['tb.Task, 'addTasks['__['ta.Task, 'tb.Task]]]] >
 strategy < set-module('NONDET-SCHEDULER)
-         ; record
-         ; while (not empty?) { narrow
-                              ; record
-                              ; load
-                              }
+         ; explore-all
          ; summarize
          >
 

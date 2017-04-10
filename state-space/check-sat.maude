@@ -1,4 +1,4 @@
-load smt.maude
+load smt
 
 set include BOOLEAN off .
 
