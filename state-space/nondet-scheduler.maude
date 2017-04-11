@@ -1,3 +1,12 @@
+--- Examples
+--- ========
+
+--- Nondeterministic Scheduler
+--- --------------------------
+
+--- This implements the worlds simplest and dumbest scheduler.
+
+
 load meta-strategy
 
 fmod SCHEDULER is
@@ -33,13 +42,14 @@ mod NONDET-SCHEDULER is
   rl T | TS   => { TS } .
 endm
 
-reduce in META-STRATEGY :
+reduce in NARROWING-MODULO-SMT :
 
+current-module < upModule('NONDET-SCHEDULER, true) >
 trace < .CTermSetTrace >
 state < '`{_`}['__['tb.Task, 'addTasks['__['ta.Task, 'tb.Task]]]] >
-strategy < set-module('NONDET-SCHEDULER)
-         ; explore-all
-         ; summarize
-         >
+strategy < set-module('NONDET-SCHEDULER) ; explore-all >
 
 .
+
+q
+

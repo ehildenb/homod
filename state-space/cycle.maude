@@ -1,3 +1,12 @@
+--- Examples
+--- ========
+
+--- Rewrite Cycle
+--- -------------
+
+--- This module just rewrites in a simple cycle.
+
+
 load meta-strategy
 
 mod CYCLE is
@@ -14,13 +23,14 @@ mod CYCLE is
 endm
 
 
-reduce in META-STRATEGY :
+reduce in NARROWING-MODULO-SMT :
 
+current-module < upModule('CYCLE, true) >
 trace < .CTermSetTrace >
 state < 'f['X:PreState] >
-strategy < set-module('CYCLE)
-         ; explore-all
-         ; summarize
-         >
+strategy < set-module('CYCLE) ; explore-all >
 
 .
+
+q
+

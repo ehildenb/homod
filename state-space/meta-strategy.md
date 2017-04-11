@@ -1,11 +1,22 @@
---- Constrained Terms
---- =================
+---
+title: Narrowing Modulo SMT
+author: Everett Hildenbrandt
+geomety: margin=2.5cm
+...
 
---- First we need to be able to manipulate constrained symbolic terms. Notable, we
---- need to be able to effectively compute term union and difference relative to a
---- given module.
+In this file, Narrowing modulo SMT is developed for the Maude language. A simple
+imperative strategy language is given, which controls meta-level operations over
+the set of states. A trace which records the set of states seen up to each step
+as well as the states first seen at each step is kept.
 
+Constrained Terms
+=================
 
+First we need to be able to manipulate constrained symbolic terms. Notable, we
+need to be able to effectively compute term union and difference relative to a
+given module.
+
+```{.maude .meta-strategy}
 fmod CTERM-SET is
   extending BOOL .
   protecting META-LEVEL .
@@ -69,14 +80,14 @@ fmod CTERM-SET is
   op #simplifyBool : Bool -> Bool .
   ---------------------------------
 endfm
+```
 
+Analysis
+========
 
---- Analysis
---- ========
+`Analysis` is an $AC$-soup of state.
 
---- `Analysis` is an $AC$-soup of state.
-
-
+```{.maude .meta-strategy}
 fmod ANALYSIS is
   sort Analysis .
 
@@ -84,14 +95,14 @@ fmod ANALYSIS is
   op __        : Analysis Analysis -> Analysis [assoc comm id: .Analysis prec 95 format(d n d)] .
   -----------------------------------------------------------------------------------------------
 endfm
+```
 
+Current Module
+--------------
 
---- Current Module
---- --------------
+Many parts need the analysis need the current module we're working in.
 
---- Many parts need the analysis need the current module we're working in.
-
-
+```{.maude .meta-strategy}
 fmod MODULE is
   protecting META-LEVEL .
   extending ANALYSIS .
@@ -109,16 +120,16 @@ fmod MODULE is
   ------------------------------------------------
   eq set-module(H) [ MOD ] = upModule(H, true) .
 endfm
+```
 
+Current State
+-------------
 
---- Current State
---- -------------
+The current state (over which we will call commands like `metaReduce` and
+`metaNarrowSearch`) is also useful to have around. It consists of a set of
+state, given by the sort `CTermSet`.
 
---- The current state (over which we will call commands like `metaReduce` and
---- `metaNarrowSearch`) is also useful to have around. It consists of a set of
---- state, given by the sort `CTermSet`.
-
-
+```{.maude .meta-strategy}
 fmod STATE is
   protecting MODULE .
   protecting CTERM-SET .
@@ -168,16 +179,16 @@ fmod STATE is
 
   op #narrow-smt : Module CTerm CTerm Nat -> CTerm .
 endfm
+```
 
+State Trace
+-----------
 
---- State Trace
---- -----------
+We need to have a state trace around for trace-based analysis. This particular
+trace tracks the accumulated seen states up to a step, as well as the states
+first seen at that step.
 
---- We need to have a state trace around for trace-based analysis. This particular
---- trace tracks the accumulated seen states up to a step, as well as the states
---- first seen at that step.
-
-
+```{.maude .meta-strategy}
 fmod TRACE is
   protecting STATE .
 
@@ -218,15 +229,15 @@ fmod TRACE is
   ------------------------------------
   eq load < s(N) | CTSPM N |-> < CTS1 , CTS2 > > [ CTS ] = CTS1 .
 endfm
+```
 
+Strategy
+--------
 
---- Strategy
---- --------
+Finally, we need a strategy which will control all of this. Here I have a simple
+imerative strategy language with boolean predicates over sets of terms.
 
---- Finally, we need a strategy which will control all of this. Here I have a simple
---- imerative strategy language with boolean predicates over sets of terms.
-
-
+```{.maude .meta-strategy}
 fmod STRATEGY is
   protecting STATE .
   extending BOOL .
@@ -294,21 +305,21 @@ fmod STRATEGY is
   eq #eval(empty?, .CTermSet) = true .
   eq #eval(empty?, NeCTS)     = false .
 endfm
+```
 
+MSH
+---
 
---- MSH
---- ---
+When the above state components are put together (in a parallel manner), then
+what you get is `MSH`. `MSH` contains some of the functionality of the normal
+Maude shell (eg. `reduce`, `rewrite`, and `narrow`), but defined in an
+extensible and programmable way.
 
---- When the above state components are put together (in a parallel manner), then
---- what you get is `MSH`. `MSH` contains some of the functionality of the normal
---- Maude shell (eg. `reduce`, `rewrite`, and `narrow`), but defined in an
---- extensible and programmable way.
+This module consists of the "plumbing" for `MSH`, which loads arguments from the
+correct parts of the state and applies the results to the correct parts of the
+state. This is all done using the sorts of the commands .
 
---- This module consists of the "plumbing" for `MSH`, which loads arguments from the
---- correct parts of the state and applies the results to the correct parts of the
---- state. This is all done using the sorts of the commands .
-
-
+```{.maude .meta-strategy}
 fmod MSH is
   protecting MODULE .
   protecting STATE .
@@ -354,15 +365,15 @@ fmod MSH is
   eq strategy < CT ; P > trace < CTermST >
    = strategy <      P > trace < CT [ CTermST ] > .
 endfm
+```
 
+Narrowing module SMT
+====================
 
---- Narrowing module SMT
---- ====================
+Here we instantiate all the above given components to a language suitable for
+narrowing modulo SMT trace-based analysis.
 
---- Here we instantiate all the above given components to a language suitable for
---- narrowing modulo SMT trace-based analysis.
-
-
+```{.maude .meta-strategy}
 fmod NARROWING-MODULO-SMT is
   protecting MSH .
 
@@ -374,4 +385,94 @@ fmod NARROWING-MODULO-SMT is
                                       ; load
                                       } .
 endfm
+```
 
+Examples
+========
+
+Rewrite Cycle
+-------------
+
+This module just rewrites in a simple cycle.
+
+```{.maude .example-cycle}
+load meta-strategy
+
+mod CYCLE is
+  sorts PreState State .
+
+  ops a b c : -> PreState .
+
+  ops f g : PreState -> State .
+
+  rl f(a) => f(b) .
+  rl f(a) => g(c) .
+  rl f(b) => f(c) .
+  rl f(c) => f(a) .
+endm
+
+
+reduce in NARROWING-MODULO-SMT :
+
+current-module < upModule('CYCLE, true) >
+trace < .CTermSetTrace >
+state < 'f['X:PreState] >
+strategy < set-module('CYCLE) ; explore-all >
+
+.
+
+q
+```
+
+Nondeterministic Scheduler
+--------------------------
+
+This implements the worlds simplest and dumbest scheduler.
+
+```{.maude .example-nondet-scheduler}
+load meta-strategy
+
+fmod SCHEDULER is
+  sorts Task NeTasks Tasks .
+  subsorts Task < NeTasks < Tasks .
+  sort State .
+
+  op .Tasks : -> Tasks .
+  op __ : NeTasks Tasks -> NeTasks [assoc comm id: .Tasks] .
+  op __ : Tasks   Tasks -> Tasks   [ditto] .
+
+  vars NeTS : NeTasks .
+  eq NeTS NeTS = NeTS .
+
+  op {_} : Tasks -> State .
+  op _|_ : Task Tasks -> State .
+
+  ops ta tb tc : -> Task .
+  op addTasks    : Tasks -> Task .
+  op removeTasks : Tasks -> Task .
+
+  vars TS TS' : Tasks . var T : Task .
+  eq addTasks(TS)      | TS'   = {TS TS'} .
+  eq removeTasks(T TS) | T TS' = removeTasks(T TS) | TS' .
+  eq removeTasks(TS)   | TS'   = {TS'} [owise] .
+endfm
+
+mod NONDET-SCHEDULER is
+  protecting SCHEDULER .
+
+  var T : Task . var TS : Tasks .
+  rl { T TS } => T | TS .
+  rl T | TS   => { TS } .
+endm
+
+reduce in NARROWING-MODULO-SMT :
+
+current-module < upModule('NONDET-SCHEDULER, true) >
+trace < .CTermSetTrace >
+state < '`{_`}['__['tb.Task, 'addTasks['__['ta.Task, 'tb.Task]]]] >
+strategy < set-module('NONDET-SCHEDULER) ; explore-all >
+
+.
+
+q
+```
