@@ -126,8 +126,8 @@ Current State
 -------------
 
 The current state (over which we will call commands like `metaReduce` and
-`metaNarrowSearch`) is also useful to have around. It consists of a set of
-state, given by the sort `CTermSet`.
+`metaNarrow`) is also useful to have around. It consists of a set of state,
+given by the sort `CTermSet`.
 
 ```{.maude .meta-strategy}
 fmod STATE is
@@ -235,7 +235,7 @@ Strategy
 --------
 
 Finally, we need a strategy which will control all of this. Here I have a simple
-imerative strategy language with boolean predicates over sets of terms.
+imperative strategy language with boolean predicates over sets of terms.
 
 ```{.maude .meta-strategy}
 fmod STRATEGY is
@@ -367,7 +367,7 @@ fmod MSH is
 endfm
 ```
 
-Narrowing module SMT
+Narrowing modulo SMT
 ====================
 
 Here we instantiate all the above given components to a language suitable for
