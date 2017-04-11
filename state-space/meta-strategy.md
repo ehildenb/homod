@@ -2,7 +2,7 @@
 title: Narrowing Modulo SMT
 author: Everett Hildenbrandt
 geomety: margin=2.5cm
-...
+---
 
 In this file, Narrowing modulo SMT is developed for the Maude language. A simple
 imperative strategy language is given, which controls meta-level operations over
