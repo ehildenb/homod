@@ -4,6 +4,7 @@
 --- Pre-Exists
 --- ----------
 
+
 fmod FUNCTION{X :: TRIV, Y :: TRIV} is
     sort =>{X,Y} .
     op __   : =>{X,Y} X$Elt -> Y$Elt [prec 40] .
@@ -33,10 +34,33 @@ fmod FUNCTION-COMP{X :: TRIV, Y :: TRIV, Z :: TRIV} is
     eq (g . f) x = g (f x) .
 endfm
 
+
+--- The above code acts as a "prelude" for other higher-order modules. The most
+--- important of the three modules specified above is the `FUNCTION` module,
+--- parametrized on two `TRIV` theories `X` and `Y`. Given the `Elt` sorts of these
+--- theories, it creates a new sort that represents functions `[X -> Y]`.
+--- `FUNCTION{X,Y}` also defines the `__` operator for function application. By
+--- defining the `__` operator in this way, we are able to rely on Maude's sort
+--- checker to rule out ill-formed simply-typed functional terms. We also define the
+--- `_$_` operator in this module, which is based off Haskell's function of the same
+--- name, and is used as a low-precedence function application operator.
+
+--- The other modules are specified mostly for the user's convenience. The
+--- `FUNCTION-ID` module gives the identity function on `X`. The `FUNCTION-COMP`
+--- module is parametrized on `X`, `Y`, and `Z`, and allows one to compose a
+--- function from `Y` to `Z` with a function from `X` to `Y`, resulting in a
+--- function from `X` to `Z`. Here, using the `=>{.,.}` notation, higher order
+--- function composition can be expressed without much difficulty. Further, note
+--- that by our definition of `_._`, if two functions cannot be composed, Maude's
+--- sort checker will disallow usage of the `_._` operator.
+
 --- Generated
 --- ---------
 
+--- We would like to generate the following code given the specification above.
+
 --- ### Core Maude
+
 
 fmod DATA-MAYBE{a :: TRIV} is
     sort Maybe{a} .
@@ -50,7 +74,23 @@ fmod DATA-CONS{a :: TRIV} is
     op _:|_ : a$Elt Cons{a} -> Cons{a} [ctor] .
 endfm
 
+
+--- Because Haskell data-types are just Algebraic Data Types (ADTs), their
+--- representation in Maude is nearly identical to that in Haskell. Maude has many
+--- fewer restrictions on the allowed syntax for defining ADTs; for instance we had
+--- to choose the syntax `:|` for the Haskell above to be compilable but Maude has
+--- no such restriction.
+
+--- Maude has open sorts, which means that we can also easily extend the `Maybe` or
+--- `Cons` data-types later with more data constructors. Adding data-constructors to
+--- a type in Haskell can be very painful - it requires adding definitions to all
+--- the places where that datatype is used. Additionally, Maude supports not just
+--- many-sorted equational logic, but order-sorted equational logic; this could
+--- conceivably be used to provide very natural data-subtyping, something that is
+--- not immediately present in Haskell.
+
 --- ### Full Maude
+
 
 load full-maude27.maude .
 
@@ -71,6 +111,23 @@ view =>{X :: TRIV, Y :: TRIV} from TRIV to FUNCTION{X,Y} is
     sort Elt to =>{X,Y} .
 endv
 )
+
+
+--- To actually get usable datatypes and functions, we must instantiate the Maude
+--- modules above with the corresponding `TRIV` theories. Here, we provide some
+--- parameterized views (supported by Full Maude) which make this process easier. To
+--- get a function `[X -> Y]`, a user can use the view `=>{X,Y}`. As long as there
+--- are `TRIV` instances for both `X` and `Y` Full Maude will generate the
+--- appropriate view `=>{X,Y}` for the user.
+
+--- In *Combining Algebra and Higher-Order Types*[@tannen], a base type is a sort of
+--- some equational theory. These types can be combined using lambda-terms to form
+--- other more complex types. By having these parameterized views, we are declaring
+--- that anything of sort `TRIV` is a base type, as well as anything built from the
+--- data-constructors for `Maybe` and `Cons`. We've also added `=>{X,Y}` as a
+--- base-type here too, meaning we can build multi-argument functions and
+--- higher-order functions.
+
 
 (
 fmod INSTANCE-MAPPABLE-MAYBE{a :: TRIV, b :: TRIV} is
@@ -115,8 +172,24 @@ fmod INSTANCE-FOLDABLE-CONS{a :: TRIV, b :: TRIV} is
 endfm
 )
 
+
+--- From the instance and typeclass declarations above, we would like to generate
+--- this Full Maude code. The equational definitions of the `map` and `foldl`
+--- functions look nearly identical to the Haskell definitions above. To make sure
+--- that the appropriate sort-checking will be used, various `FUNCTION{X,Y}`
+--- instances must be included into this module.
+
+--- To achieve the higher-order functionality here, all we have to do is use
+--- algebra. The sort-checking using `TRIV` views ensures that our terms are
+--- well-formed. Additionally, we get partial application of functions for free (as
+--- shown below).
+
 --- Testing
 --- -------
+
+--- Here is an example module which would use this higher-order functionality. We've
+--- provided it for demonstration purposes.
+
 
 (
 fmod TESTING is
@@ -164,6 +237,28 @@ fmod TESTING is
 endfm
 )
 
+
+--- At the top of the module we include all of the instances we need just to make
+--- the sort-checking and function application of the `TESTING` module work.
+--- Ideally, a user would not have to import these manually, our tool would infer
+--- which modules need to be protected based on what the user writes. For example,
+--- if `map even` is used over a list, then we would like to infer that
+--- `INSTANCE-MAPPABLE-CONS{Nat, Bool}` should be included.
+
+--- Further, one can define functions both algebraically and functionally. For
+--- example, `aanndd` is defined in a functional way (as it would appear in
+--- Haskell), explicitly specifying the value of `aanndd B1 B2` for all `B1` and
+--- `B2`. On the other hand, `double` and `+` are defined purely algebraically,
+--- using Maude's builtin `*` and `+` operators respectively.
+
+--- The `even` and `odd` functions are a bit more interesting. `even` is defined
+--- purely functionally for the base-cases, but for the recursive case it has an
+--- algebraic term within a functional term. `odd` is the other way around - it is
+--- defined with a functional term (`even N`) inside an algebraic term (`not _`).
+--- This demonstrates how algebraic and higher-order functional definitions can be
+--- combined freely, leading to compact specifications.
+
+
 --- map over Maybe type
 --- -------------------
 (reduce map even Nothing .)
@@ -204,3 +299,21 @@ endfm
 --- -------------------------------------------------------
 (reduce map even . map (+ 3) $ list1 .)
     --- produces: true :| true :| false :| false :| true :| false :| Nil
+
+
+--- Above are a series of examples using code from the `TESTING` module. The first
+--- few examples are basic examples using `map` over `Maybe` and `Cons` datatypes.
+--- The next couple of examples show the use of function composition and basic uses
+--- of `foldl`. Note in the seventh example, `id` is used multiple times, and
+--- Maude's sort checker is able to infer when it is the identity function over
+--- `Nat` and when it is the identity function over `Bool`.
+
+--- The next example is another basic use of `map` over a list, though note the
+--- function used is `(+ 3)`. Here, with no additional work, Maude gives us partial
+--- application. Unfortunately, a partially applied function like `map even` can be
+--- `=>{Maybe{Nat},Maybe{Bool}}` or `=>{Cons{Nat},Cons{Bool}}`, so currently we are
+--- unable to infer a generic sort for such partially applied functions without
+--- additional information. The last example shows function composition along with
+--- partial application, as well as another use of the `$` precedence operator.
+--- Here, since a list is used, Maude is able to infer the correct sort for the
+--- partially applied functions `map even`, `map (+ 3)`, and their composition.

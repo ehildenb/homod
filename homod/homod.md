@@ -2,7 +2,7 @@
 author: Everett Hildenbrandt, Lucas Pena
 title: Generating Higher-order Maude from Haskell
 geometry: margin=2.7cm
-...
+---
 
 
 Combining Algebra and Higher-Order Types
@@ -443,4 +443,4 @@ references:
     issued:
     -   year: 1988
     title: Combining Algebra and Higher-Order Types
-...
+---
